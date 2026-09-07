@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import sharp from "sharp";
 
 /**
  * The guest journey, start to finish.
@@ -58,6 +59,15 @@ test("a guest goes from the idle screen to a downloadable photo", async ({ page 
   const download = await page.request.get(`/api/p/${shareUrl.split("/p/")[1]}/download`);
   expect(download.ok()).toBe(true);
   expect(download.headers()["content-disposition"]).toContain("attachment");
+
+  // The delivered file must be exactly 1080x1920: the operator's branding
+  // overlay is authored against that canvas, so anything else shifts it.
+  const metadata = await sharp(await download.body()).metadata();
+  expect({ width: metadata.width, height: metadata.height }).toEqual({
+    width: 1080,
+    height: 1920,
+  });
+  expect(metadata.format).toBe("jpeg");
 });
 
 test("the details form refuses to continue without consent or a valid email", async ({ page }) => {
