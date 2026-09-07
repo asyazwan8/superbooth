@@ -1,0 +1,32 @@
+node_modules/
+.next/
+out/
+build/
+.DS_Store
+
+# env
+.env
+.env.local
+.env*.local
+
+# firebase
+serviceAccountKey.json
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# test output
+coverage/
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+
+# misc
+*.tsbuildinfo
+next-env.d.ts
+
+# local mock storage (assets + disk db)
+.superbooth-mock/
+
