@@ -41,23 +41,32 @@ export function useIdleReset({
   const [countdown, setCountdown] = useState(IDLE_GRACE_SECONDS);
 
   // Held in a ref so changing the callback identity does not restart the timer.
+  // Assigned in an effect rather than during render, which must stay pure.
   const onResetRef = useRef(onReset);
-  onResetRef.current = onReset;
+  useEffect(() => {
+    onResetRef.current = onReset;
+  }, [onReset]);
 
   const dismiss = useCallback(() => {
     setWarning(false);
     setCountdown(IDLE_GRACE_SECONDS);
   }, []);
 
-  // Phase 1: watch for inactivity.
+  // Phase 1: watch for inactivity. The countdown is reset alongside the
+  // warning, so the countdown effect below never has to set state on entry.
   useEffect(() => {
     if (!enabled || warning) return;
 
-    let timer = window.setTimeout(() => setWarning(true), timeoutSec * 1000);
+    const raise = () => {
+      setCountdown(IDLE_GRACE_SECONDS);
+      setWarning(true);
+    };
+
+    let timer = window.setTimeout(raise, timeoutSec * 1000);
 
     const bump = () => {
       window.clearTimeout(timer);
-      timer = window.setTimeout(() => setWarning(true), timeoutSec * 1000);
+      timer = window.setTimeout(raise, timeoutSec * 1000);
     };
 
     for (const event of ACTIVITY_EVENTS) {
@@ -73,7 +82,6 @@ export function useIdleReset({
   useEffect(() => {
     if (!warning) return;
 
-    setCountdown(IDLE_GRACE_SECONDS);
     const timer = window.setInterval(() => {
       setCountdown((remaining) => {
         if (remaining <= 1) {

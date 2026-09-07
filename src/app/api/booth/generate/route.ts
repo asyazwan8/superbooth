@@ -56,6 +56,7 @@ export async function POST(request: Request) {
       variantUrls: [],
       selectedIndex: null,
       attempts: session.attempts + 1,
+      imagesGenerated: session.imagesGenerated + preset.generation.variants,
       choices: {
         sceneId: scene?.id ?? null,
         poseId: pose?.id ?? null,

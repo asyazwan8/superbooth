@@ -29,7 +29,7 @@ export function CaptureStep({
   dotsTotal: number;
   dotsCurrent: number;
 }) {
-  const { videoRef, state, error } = useCamera(true);
+  const { videoRef, state, error, retry } = useCamera();
   const [countdown, setCountdown] = useState<number | null>(null);
   const [flash, setFlash] = useState(false);
   const timers = useRef<number[]>([]);
@@ -102,7 +102,10 @@ export function CaptureStep({
               <>
                 <p className="font-display text-2xl text-ink-100">Camera unavailable</p>
                 <p className="text-ink-400">{error}</p>
-                <p className="text-sm text-ink-500">Please ask an attendant for help.</p>
+                <BigButton variant="secondary" onClick={() => void retry()}>
+                  Try again
+                </BigButton>
+                <p className="text-sm text-ink-500">Or ask an attendant for help.</p>
               </>
             )}
           </div>

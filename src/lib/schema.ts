@@ -240,6 +240,12 @@ export const sessionSchema = z.object({
   status: sessionStatusSchema,
   error: z.string().nullable().default(null),
   attempts: z.number().int().min(0).default(0),
+  /**
+   * Billable images requested for this session. Tracked separately from
+   * `variantUrls` because purging clears the URLs, and a purged session still
+   * cost money — spend reporting has to survive data retention.
+   */
+  imagesGenerated: z.number().int().min(0).default(0),
   /** Hidden by a moderator: excluded from the gallery, kept for the guest. */
   hidden: z.boolean().default(false),
 

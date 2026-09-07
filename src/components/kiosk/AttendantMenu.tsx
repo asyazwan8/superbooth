@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import { BigButton } from "@/components/kiosk/BigButton";
 
@@ -20,6 +21,7 @@ const TAP_WINDOW_MS = 2_500;
  * shipped to it is readable by anyone with a keyboard.
  */
 export function AttendantMenu({ onReset }: { onReset: () => void }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -51,13 +53,13 @@ export function AttendantMenu({ onReset }: { onReset: () => void }) {
         setPin("");
         return;
       }
-      window.location.href = "/admin";
+      router.push("/admin");
     } catch {
       setError("Could not reach the server.");
     } finally {
       setChecking(false);
     }
-  }, [pin]);
+  }, [pin, router]);
 
   return (
     <>

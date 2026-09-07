@@ -45,14 +45,20 @@ export async function getActivePresetOrDefault(): Promise<Preset> {
  * payload means a curious guest with devtools learns nothing useful.
  */
 export function sanitisePreset(preset: Preset): PublicPreset {
-  const { isActive: _isActive, createdAt: _createdAt, updatedAt: _updatedAt, retention: _retention, ...rest } =
-    presetSchema.parse(preset);
+  const parsed = presetSchema.parse(preset);
+
+  // Built by naming what the kiosk gets rather than by removing what it must
+  // not have: a field added to Preset later is then private until chosen.
   return {
-    ...rest,
-    scenes: rest.scenes.filter((option) => option.enabled),
-    poses: rest.poses.filter((option) => option.enabled),
-    treatments: rest.treatments.filter((option) => option.enabled),
-    form: { ...rest.form, fields: rest.form.fields.filter((field) => field.enabled) },
+    id: parsed.id,
+    name: parsed.name,
+    branding: parsed.branding,
+    flow: parsed.flow,
+    generation: parsed.generation,
+    form: { ...parsed.form, fields: parsed.form.fields.filter((field) => field.enabled) },
+    scenes: parsed.scenes.filter((option) => option.enabled),
+    poses: parsed.poses.filter((option) => option.enabled),
+    treatments: parsed.treatments.filter((option) => option.enabled),
   };
 }
 
