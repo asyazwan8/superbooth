@@ -28,9 +28,21 @@ export function required(name: string): string {
 export const falMockEnabled = (): boolean =>
   process.env.FAL_MOCK === "1" || process.env.FAL_MOCK === "true";
 
-/** Run Firestore against an in-memory store. Implied by FAL_MOCK for local dev. */
+/**
+ * Whether Firestore and Firebase Auth are usable. All three server credentials
+ * must be present, not just two.
+ *
+ * Checking only the project id and client email used to let a deployment with
+ * a missing or unreadable private key render the Firebase sign-in form, accept
+ * the password, and only then fail deep inside the Admin SDK as an opaque 500.
+ * Treating partial configuration as unconfigured keeps the failure honest.
+ */
 export const firebaseConfigured = (): boolean =>
-  Boolean(optional("FIREBASE_PROJECT_ID") && optional("FIREBASE_CLIENT_EMAIL"));
+  Boolean(
+    optional("FIREBASE_PROJECT_ID") &&
+      optional("FIREBASE_CLIENT_EMAIL") &&
+      optional("FIREBASE_PRIVATE_KEY"),
+  );
 
 export const falKey = (): string => required("FAL_KEY");
 
@@ -59,9 +71,42 @@ export function appUrl(): string {
   return `http://localhost:${process.env.PORT ?? 3000}`;
 }
 
+/**
+ * Service-account private keys arrive mangled in three predictable ways, and
+ * every one of them produces the same unhelpful "Failed to parse private key"
+ * from the Admin SDK:
+ *
+ *   - copied straight out of the JSON file, so wrapped in double quotes;
+ *   - pasted with literal backslash-n rather than real newlines;
+ *   - pasted into a multi-line editor, so the newlines are already real.
+ *
+ * All three describe the same key, so all three are accepted here rather than
+ * asking an operator to guess which form their host wanted.
+ */
+export function normalisePrivateKey(raw: string): string {
+  let key = raw.trim();
+
+  // Strip a wrapping pair of quotes, which a copy from JSON brings along.
+  const quoted = /^(["'])([\s\S]*)\1$/.exec(key);
+  if (quoted) key = quoted[2];
+
+  key = key.replace(/\\n/g, "\n");
+
+  if (!key.includes("BEGIN") || !key.includes("PRIVATE KEY")) {
+    throw new Error(
+      "FIREBASE_PRIVATE_KEY does not look like a PEM private key. Copy the whole " +
+        "private_key value from the service account JSON, including the " +
+        "-----BEGIN PRIVATE KEY----- and -----END PRIVATE KEY----- lines. See SETUP.md.",
+    );
+  }
+
+  // A canonical PEM ends with a newline, and the trim above removes one that
+  // was already there. Strict parsers reject the key without it.
+  return key.endsWith("\n") ? key : `${key}\n`;
+}
+
 export const firebaseAdminConfig = () => ({
   projectId: required("FIREBASE_PROJECT_ID"),
   clientEmail: required("FIREBASE_CLIENT_EMAIL"),
-  // Vercel's env editor stores newlines escaped; restore them before use.
-  privateKey: required("FIREBASE_PRIVATE_KEY").replace(/\\n/g, "\n"),
+  privateKey: normalisePrivateKey(required("FIREBASE_PRIVATE_KEY")),
 });

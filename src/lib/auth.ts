@@ -2,7 +2,7 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { adminEmails, attendantPin, firebaseConfigured } from "@/lib/env";
-import { forbidden, unauthorized } from "@/lib/api";
+import { HttpError, forbidden, unauthorized } from "@/lib/api";
 
 /**
  * Admin authentication.
@@ -66,8 +66,25 @@ async function firebaseAuth() {
   const { getAuth } = await import("firebase-admin/auth");
   const { firebaseAdminConfig } = await import("@/lib/env");
 
-  const app = getApps()[0] ?? initializeApp({ credential: cert(firebaseAdminConfig()) });
-  return getAuth(app);
+  try {
+    const app = getApps()[0] ?? initializeApp({ credential: cert(firebaseAdminConfig()) });
+    return getAuth(app);
+  } catch (cause) {
+    /*
+     * Bad service-account credentials otherwise surface as an unhandled throw,
+     * which the route handler turns into a generic "Something went wrong" —
+     * indistinguishable from a wrong password, and impossible to act on. This
+     * route is operator-only, so naming the failing variable is safe and is
+     * the difference between a five-minute fix and an afternoon.
+     */
+    const detail = cause instanceof Error ? cause.message : String(cause);
+    throw new HttpError(
+      500,
+      `Firebase admin credentials were rejected: ${detail} ` +
+        "Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY " +
+        "in your deployment's environment variables. See SETUP.md.",
+    );
+  }
 }
 
 export function isAllowlisted(email: string | undefined): boolean {
@@ -82,7 +99,22 @@ export function isAllowlisted(email: string | undefined): boolean {
 /** Exchange a Firebase ID token for a session cookie value. */
 export async function createFirebaseSession(idToken: string): Promise<string> {
   const auth = await firebaseAuth();
-  const decoded = await auth.verifyIdToken(idToken, true);
+
+  let decoded;
+  try {
+    decoded = await auth.verifyIdToken(idToken, true);
+  } catch (cause) {
+    // The usual cause is the browser signing in against a different Firebase
+    // project than the server verifies against — NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    // and FIREBASE_PROJECT_ID disagreeing. The SDK calls that "incorrect
+    // audience", which tells an operator nothing.
+    const detail = cause instanceof Error ? cause.message : String(cause);
+    throw new HttpError(
+      500,
+      `Could not verify the sign-in token: ${detail} ` +
+        "Confirm NEXT_PUBLIC_FIREBASE_PROJECT_ID matches FIREBASE_PROJECT_ID.",
+    );
+  }
 
   if (!isAllowlisted(decoded.email)) {
     throw forbidden("This account is not on the admin allowlist.");

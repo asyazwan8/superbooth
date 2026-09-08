@@ -72,7 +72,10 @@ production** — a deployed booth must use Firebase Auth.
 
 ### 3.2 Turn on Firestore
 
-1. In the left sidebar: **Build → Firestore Database → Create database**.
+1. In the left sidebar: **Product categories → Databases & Storage → Firestore
+   Database → Create database**. (Firebase reorganised this console; if the
+   category names differ again, the **"Search for products"** box at the top of
+   the sidebar is the reliable way in.)
 2. Choose **Production mode** (Superbooth ships rules that deny all direct
    access; everything goes through the server).
 3. Pick the region closest to your events — `asia-southeast1` (Singapore) is the
@@ -80,10 +83,17 @@ production** — a deployed booth must use Firebase Auth.
 
 ### 3.3 Turn on Authentication
 
-1. **Build → Authentication → Get started**.
-2. Enable the **Email/Password** provider.
+1. **Product categories → Security → Authentication → Get started**, or search
+   for "Authentication" in the sidebar search box.
+2. On the **Sign-in method** tab, enable the **Email/Password** provider. Leave
+   "Email link (passwordless sign-in)" off — Superbooth does not use it.
 3. On the **Users** tab, **Add user** for each operator who should reach the
-   backend. Note the email addresses — you need them in a moment.
+   backend, setting a password for each. Note the email addresses — you need
+   them in a moment.
+
+> Adding a user here creates the account; listing the address in `ADMIN_EMAILS`
+> grants it access. **Both are required.** The password is one you invent on
+> this screen — not the operator's Google account password.
 
 ### 3.4 Get the server credentials
 
@@ -121,9 +131,12 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=superbooth-12345
 ADMIN_EMAILS=you@example.com,colleague@example.com
 ```
 
-> **`FIREBASE_PRIVATE_KEY` is the one that trips people up.** Keep the literal
-> `\n` sequences and wrap the whole value in double quotes. Superbooth converts
-> them back to real newlines.
+> **`FIREBASE_PRIVATE_KEY` is the one that trips people up.** Paste the whole
+> value including the `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----`
+> lines. Superbooth accepts every shape a copy-paste produces — literal `\n`,
+> real newlines, and a wrapping pair of quotes — so you do not have to guess
+> which one your host wants. If the value is wrong, the sign-in page now says so
+> and names the variable rather than failing with a generic error.
 
 ### 3.7 Publish the security rules
 
