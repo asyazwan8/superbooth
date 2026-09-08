@@ -61,17 +61,17 @@ function verifyLocalToken(token: string): boolean {
 /* Firebase sessions                                                   */
 /* ------------------------------------------------------------------ */
 
-/** Matches the module-resolution failures a too-old Node produces. */
+/** Matches import-time failures, as opposed to a rejected service account. */
 const MODULE_LOAD_FAILURE = /ERR_REQUIRE_ESM|Failed to load external module|Cannot find module/i;
 
 async function firebaseAuth() {
   try {
     /*
      * These imports are inside the try on purpose. firebase-admin reaches jose
-     * through jwks-rsa, which requires an ES-only module from CommonJS — legal
-     * only from Node 22.12. On anything older the import itself throws, and
-     * with it outside the try that arrived as a bare "Something went wrong",
-     * which is exactly the failure hardest to diagnose from a login screen.
+     * through jwks-rsa, and that chain has already broken once at import time
+     * on a serverless runtime. With the imports outside the try that arrived as
+     * a bare "Something went wrong", which is the failure hardest to diagnose
+     * from a login screen.
      */
     const { cert, getApps, initializeApp } = await import("firebase-admin/app");
     const { getAuth } = await import("firebase-admin/auth");
@@ -87,8 +87,9 @@ async function firebaseAuth() {
     if (MODULE_LOAD_FAILURE.test(detail)) {
       throw new HttpError(
         500,
-        `Firebase Admin could not load on Node ${process.version}. ` +
-          "It needs Node 22.12 or newer; set the deployment's Node version to 22.x. " +
+        `Firebase Admin failed to load (Node ${process.version}). This is a ` +
+          "dependency packaging problem, not a credentials one: check that the " +
+          "jose override in package.json survived the last install. " +
           `Underlying error: ${detail}`,
       );
     }
