@@ -61,23 +61,43 @@ function verifyLocalToken(token: string): boolean {
 /* Firebase sessions                                                   */
 /* ------------------------------------------------------------------ */
 
-async function firebaseAuth() {
-  const { cert, getApps, initializeApp } = await import("firebase-admin/app");
-  const { getAuth } = await import("firebase-admin/auth");
-  const { firebaseAdminConfig } = await import("@/lib/env");
+/** Matches the module-resolution failures a too-old Node produces. */
+const MODULE_LOAD_FAILURE = /ERR_REQUIRE_ESM|Failed to load external module|Cannot find module/i;
 
+async function firebaseAuth() {
   try {
+    /*
+     * These imports are inside the try on purpose. firebase-admin reaches jose
+     * through jwks-rsa, which requires an ES-only module from CommonJS — legal
+     * only from Node 22.12. On anything older the import itself throws, and
+     * with it outside the try that arrived as a bare "Something went wrong",
+     * which is exactly the failure hardest to diagnose from a login screen.
+     */
+    const { cert, getApps, initializeApp } = await import("firebase-admin/app");
+    const { getAuth } = await import("firebase-admin/auth");
+    const { firebaseAdminConfig } = await import("@/lib/env");
+
     const app = getApps()[0] ?? initializeApp({ credential: cert(firebaseAdminConfig()) });
     return getAuth(app);
   } catch (cause) {
-    /*
-     * Bad service-account credentials otherwise surface as an unhandled throw,
-     * which the route handler turns into a generic "Something went wrong" —
-     * indistinguishable from a wrong password, and impossible to act on. This
-     * route is operator-only, so naming the failing variable is safe and is
-     * the difference between a five-minute fix and an afternoon.
-     */
     const detail = cause instanceof Error ? cause.message : String(cause);
+
+    // The running Node version is named because it is the answer whenever the
+    // module graph is what failed, and it cannot be read from a login screen.
+    if (MODULE_LOAD_FAILURE.test(detail)) {
+      throw new HttpError(
+        500,
+        `Firebase Admin could not load on Node ${process.version}. ` +
+          "It needs Node 22.12 or newer; set the deployment's Node version to 22.x. " +
+          `Underlying error: ${detail}`,
+      );
+    }
+
+    /*
+     * Anything else here is a bad service account. This route is operator-only,
+     * so naming the failing variable is safe, and is the difference between a
+     * five-minute fix and an afternoon.
+     */
     throw new HttpError(
       500,
       `Firebase admin credentials were rejected: ${detail} ` +
