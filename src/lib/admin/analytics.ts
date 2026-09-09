@@ -25,13 +25,46 @@ export interface Analytics {
   medianSessionMs: number | null;
   perDay: { date: string; total: number; completed: number }[];
   funnel: { step: string; count: number }[];
-  scenes: OptionCount[];
-  poses: OptionCount[];
-  treatments: OptionCount[];
+  themes: OptionCount[];
+  /**
+   * One breakdown per customisation label, keyed by that label. Customisations
+   * belong to a theme, so there is no fixed set of them to report against —
+   * grouping by the operator's own label is what keeps this readable when two
+   * themes both ask about an outfit and a third asks about a superpower.
+   */
+  customisations: { label: string; counts: OptionCount[] }[];
   estimatedSpendUsd: number;
 }
 
 const FUNNEL_STAGES = ["Started", "Photo taken", "Generated", "Completed"] as const;
+
+/**
+ * Popularity within each customisation, grouped by the label the operator
+ * gave it. Read from the stored labels rather than from the live preset:
+ * renaming a slot must not rewrite what last week's guests chose, and a
+ * deleted slot's history still has to add up.
+ */
+function tallyCustomisations(sessions: Session[]): { label: string; counts: OptionCount[] }[] {
+  const groups = new Map<string, Map<string, number>>();
+
+  for (const session of sessions) {
+    for (const [label, choice] of Object.entries(session.labels.customisations)) {
+      if (!choice) continue;
+      const counts = groups.get(label) ?? new Map<string, number>();
+      counts.set(choice, (counts.get(choice) ?? 0) + 1);
+      groups.set(label, counts);
+    }
+  }
+
+  return [...groups.entries()]
+    .map(([label, counts]) => ({
+      label,
+      counts: [...counts.entries()]
+        .map(([optionLabel, count]) => ({ id: optionLabel, label: optionLabel, count }))
+        .sort((a, b) => b.count - a.count),
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
 
 /**
  * How far a session got, as an index into FUNNEL_STAGES.
@@ -135,12 +168,11 @@ export function computeAnalytics(sessions: Session[], costPerImageUsd: number): 
     medianSessionMs: median(sessionTimes),
     perDay: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)),
     funnel,
-    scenes: tally(sessions, (session) => ({ id: session.choices.sceneId, label: session.labels.scene })),
-    poses: tally(sessions, (session) => ({ id: session.choices.poseId, label: session.labels.pose })),
-    treatments: tally(sessions, (session) => ({
-      id: session.choices.treatmentId,
-      label: session.labels.treatment,
+    themes: tally(sessions, (session) => ({
+      id: session.choices.themeId,
+      label: session.labels.theme,
     })),
+    customisations: tallyCustomisations(sessions),
     estimatedSpendUsd: Number((images * costPerImageUsd).toFixed(2)),
   };
 }
@@ -153,14 +185,23 @@ export function computeAnalytics(sessions: Session[], costPerImageUsd: number): 
  * opened in Excel.
  */
 export function sessionsToCsv(sessions: Session[], fieldKeys: string[]): string {
+  /*
+   * Customisations vary by theme, so the columns are collected from the data
+   * rather than declared: every slot label any session recorded becomes one
+   * column, and a session that was never asked leaves it blank. A fixed set of
+   * columns would silently drop whatever a theme added.
+   */
+  const customisationLabels = [
+    ...new Set(sessions.flatMap((session) => Object.keys(session.labels.customisations))),
+  ].sort();
+
   const headers = [
     "created_at",
     ...fieldKeys,
     "consent_version",
     "consent_accepted_at",
-    "scene",
-    "pose",
-    "treatment",
+    "theme",
+    ...customisationLabels,
     "status",
     "photo_url",
     "share_id",
@@ -177,9 +218,8 @@ export function sessionsToCsv(sessions: Session[], fieldKeys: string[]): string 
       ...fieldKeys.map((key) => session.fields[key] ?? ""),
       session.consent.version,
       session.consent.acceptedAt ? new Date(session.consent.acceptedAt).toISOString() : "",
-      session.labels.scene ?? "",
-      session.labels.pose ?? "",
-      session.labels.treatment ?? "",
+      session.labels.theme ?? "",
+      ...customisationLabels.map((label) => session.labels.customisations[label] ?? ""),
       session.status,
       session.finalUrl ?? "",
       session.shortId,

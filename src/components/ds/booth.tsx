@@ -489,6 +489,7 @@ export function OptionCard({
     <button
       type="button"
       aria-pressed={selected}
+      data-testid="option-card"
       onClick={onSelect}
       style={{
         position: "relative",

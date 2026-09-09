@@ -111,8 +111,9 @@ export function PresetList({ presets }: { presets: Preset[] }) {
                   opacity: 0.75,
                 }}
               >
-                {preset.scenes.length} scenes · {preset.poses.length} looks ·{" "}
-                {preset.treatments.length} styles · {preset.generation.variants} variant
+                {preset.themes.length} theme{preset.themes.length === 1 ? "" : "s"} ·{" "}
+                {preset.themes.reduce((total, theme) => total + theme.customisations.length, 0)}{" "}
+                customisations · {preset.generation.variants} variant
                 {preset.generation.variants === 1 ? "" : "s"} at {preset.generation.resolution} ·
                 updated {new Date(preset.updatedAt).toLocaleDateString()}
               </p>

@@ -13,6 +13,14 @@ import {
 import type { Analytics, OptionCount } from "@/lib/admin/analytics";
 
 /** Option tallies carry a `count`; the bar list speaks in `value`. */
+/** A colour per customisation frame, so a row of them reads as a set. */
+const CUSTOMISATION_COLOURS = [
+  "var(--sb-orange)",
+  "var(--sb-green)",
+  "var(--sb-pink)",
+  "var(--sb-gold)",
+];
+
 const toRows = (options: OptionCount[]) =>
   options.map((option) => ({ label: option.label, value: option.count }));
 
@@ -124,25 +132,25 @@ export function AnalyticsDashboard({
           />
         </ChartFrame>
 
-        <ChartFrame title="Most popular styles">
-          <BarList rows={toRows(analytics.treatments)} emptyMessage="No styles chosen yet." />
-        </ChartFrame>
-
-        <ChartFrame title="Most popular scenes">
+        <ChartFrame title="Most popular themes">
           <BarList
             color="var(--sb-violet)"
-            rows={toRows(analytics.scenes)}
-            emptyMessage="No scenes chosen yet."
+            rows={toRows(analytics.themes)}
+            emptyMessage="No themes chosen yet."
           />
         </ChartFrame>
 
-        <ChartFrame title="Most popular looks">
-          <BarList
-            color="var(--sb-orange)"
-            rows={toRows(analytics.poses)}
-            emptyMessage="No looks chosen yet."
-          />
-        </ChartFrame>
+        {/* One frame per customisation the event actually asked about, since
+            which slots exist is a property of the themes an operator wrote. */}
+        {analytics.customisations.map((group, index) => (
+          <ChartFrame key={group.label} title={`Most popular: ${group.label}`}>
+            <BarList
+              color={CUSTOMISATION_COLOURS[index % CUSTOMISATION_COLOURS.length]}
+              rows={toRows(group.counts)}
+              emptyMessage="Nothing chosen yet."
+            />
+          </ChartFrame>
+        ))}
       </div>
 
       <div>

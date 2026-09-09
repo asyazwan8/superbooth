@@ -16,15 +16,18 @@ import { newOptionId } from "@/lib/ids";
 import { MAX_OPTIONS, type BoothOption, type StepConfig } from "@/lib/schema";
 
 /**
- * Editor for one family of booth options — scenes, looks, or styles.
+ * Editor for a list of booth options — a theme's own list, or the options
+ * inside one of its customisations.
  *
- * All three share this component because they share a shape: a label, a prompt
+ * Both share this component because they share a shape: a label, a prompt
  * fragment, and an optional reference image. The differences are copy and
- * whether AI scene generation is offered.
+ * whether backdrop generation is offered.
  *
  * The mode control lives here rather than in a separate "flow" tab because
  * "which of these does the guest choose from, or do I pick one for them" is
- * the same decision as editing the list itself.
+ * the same decision as editing the list itself. A customisation has no such
+ * control — a slot with one option resolves silently rather than costing a tap
+ * — so `config` is optional.
  */
 export function OptionEditor({
   title,
@@ -35,15 +38,18 @@ export function OptionEditor({
   onConfigChange,
   idPrefix,
   allowGenerate = false,
+  defaultReference = true,
 }: {
   title: string;
   description: string;
   options: BoothOption[];
-  config: StepConfig;
+  config?: StepConfig;
   onChange: (options: BoothOption[]) => void;
-  onConfigChange: (config: StepConfig) => void;
+  onConfigChange?: (config: StepConfig) => void;
   idPrefix: string;
   allowGenerate?: boolean;
+  /** Whether a new option's image, once uploaded, is sent to the model. */
+  defaultReference?: boolean;
 }) {
   const [expanded, setExpanded] = useState<string | null>(options[0]?.id ?? null);
 
@@ -65,7 +71,7 @@ export function OptionEditor({
       label: "Untitled",
       prompt: "",
       imageUrl: null,
-      useAsReference: true,
+      useAsReference: defaultReference,
       enabled: true,
     };
     onChange([...options, option]);
@@ -107,6 +113,7 @@ export function OptionEditor({
         </span>
       </header>
 
+      {config && onConfigChange ? (
       <Card style={{ padding: "var(--space-4)" }}>
         <Field
           label="How the guest chooses"
@@ -147,6 +154,7 @@ export function OptionEditor({
           </div>
         </Field>
       </Card>
+      ) : null}
 
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
         {options.map((option, index) => {

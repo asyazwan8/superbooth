@@ -1,4 +1,10 @@
-import type { BoothOption, PublicPreset, Resolution } from "@/lib/schema";
+import type {
+  BoothOption,
+  Customisation,
+  PublicPreset,
+  Resolution,
+  Theme,
+} from "@/lib/schema";
 
 /**
  * Prompt construction for `fal-ai/nano-banana-pro/edit`.
@@ -13,26 +19,26 @@ import type { BoothOption, PublicPreset, Resolution } from "@/lib/schema";
  */
 
 export interface PromptChoices {
-  scene: BoothOption | null;
-  pose: BoothOption | null;
-  treatment: BoothOption | null;
+  theme: Theme | null;
+  /** Resolved customisations, in the order the theme declares them. */
+  customisations: { slot: Customisation; option: BoothOption }[];
 }
 
 export interface BuiltPrompt {
   prompt: string;
   imageUrls: string[];
   /** Ordinal position of each reference, for logging and admin debugging. */
-  references: { role: "guest" | "scene" | "pose"; index: number; url: string }[];
+  references: { role: "guest" | "theme" | "customisation"; index: number; url: string }[];
 }
 
-const ORDINALS = ["first", "second", "third", "fourth", "fifth"] as const;
+const ORDINALS = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh"] as const;
 
 function ordinal(index: number): string {
   return ORDINALS[index] ?? `image number ${index + 1}`;
 }
 
 /** A reference is only sent to the model when it exists and is marked for use. */
-function referenceUrl(option: BoothOption | null): string | null {
+function referenceUrl(option: { imageUrl: string | null; useAsReference: boolean } | null): string | null {
   if (!option) return null;
   if (!option.useAsReference) return null;
   return option.imageUrl ?? null;
@@ -47,11 +53,24 @@ const IDENTITY_LOCK = [
   "Do not beautify, slim, smooth, lighten, age or de-age them, and do not change their build.",
 ].join(" ");
 
+/**
+ * Full length, always.
+ *
+ * The booth asks a guest to pick an outfit, an accessory and sometimes a pair
+ * of boots' worth of superpower — a crop at the waist throws away most of what
+ * they chose. The guest's photo is usually framed much tighter than this, so
+ * the instruction says to complete the body rather than to reproduce one:
+ * left unstated, the model tends to letterbox a head-and-shoulders shot inside
+ * a vertical frame instead of rendering legs and feet.
+ */
 const FRAMING = [
-  "FRAMING — vertical 9:16 portrait orientation.",
-  "Compose the subject centred with the whole head visible and comfortable headroom;",
-  "never crop the top of the head. Waist-up or three-quarter framing.",
-  "Keep the face sharp, well lit and unobstructed, and make it the focal point of the image.",
+  "FRAMING — vertical 9:16 full-body portrait. Show the subject from head to toe,",
+  "with the whole figure inside the frame: face, torso, hands, legs and feet all visible,",
+  "standing, with clear headroom above the head and ground visible beneath the feet.",
+  "The reference photograph may be cropped tighter than this — extend and complete the",
+  "figure naturally in keeping with the subject's build. Never crop at the waist, knees",
+  "or the top of the head. Keep the face sharp, well lit and unobstructed, and keep it",
+  "the focal point even at full length.",
 ].join(" ");
 
 const GUARDS = [
@@ -69,56 +88,51 @@ export function buildPrompt(
     { role: "guest", index: 0, url: guestPhotoUrl },
   ];
 
-  const sceneRef = referenceUrl(choices.scene);
-  const poseRef = referenceUrl(choices.pose);
-
-  let sceneOrdinal: string | null = null;
-  if (sceneRef) {
-    sceneOrdinal = ordinal(imageUrls.length);
-    references.push({ role: "scene", index: imageUrls.length, url: sceneRef });
-    imageUrls.push(sceneRef);
-  }
-
-  let poseOrdinal: string | null = null;
-  if (poseRef) {
-    poseOrdinal = ordinal(imageUrls.length);
-    references.push({ role: "pose", index: imageUrls.length, url: poseRef });
-    imageUrls.push(poseRef);
-  }
-
   const sections: string[] = [];
 
-  const treatmentText = choices.treatment?.prompt?.trim();
+  const themeText = choices.theme?.prompt?.trim();
   sections.push(
-    treatmentText
-      ? `Create a portrait of the person in the first reference image. STYLE — ${treatmentText}`
+    themeText
+      ? `Create a portrait of the person in the first reference image. ${themeText}`
       : "Create a polished, professional portrait of the person in the first reference image.",
   );
 
   sections.push(IDENTITY_LOCK);
 
-  const sceneText = choices.scene?.prompt?.trim();
-  if (sceneText || sceneOrdinal) {
-    const parts = ["SCENE —"];
-    if (sceneText) parts.push(sceneText);
-    if (sceneOrdinal) {
-      parts.push(
-        `Use the ${sceneOrdinal} reference image as the visual reference for this background:`,
-        "match its setting, colour palette and lighting direction, but re-render it in the style above.",
-      );
-    }
-    parts.push("The subject must be lit consistently with this environment so they sit naturally in it.");
-    sections.push(parts.join(" "));
+  const themeRef = referenceUrl(choices.theme);
+  if (themeRef) {
+    const position = ordinal(imageUrls.length);
+    references.push({ role: "theme", index: imageUrls.length, url: themeRef });
+    imageUrls.push(themeRef);
+    sections.push(
+      [
+        `THEME REFERENCE — use the ${position} reference image as the visual reference for the`,
+        "setting, colour palette and lighting direction, but re-render it in the style above.",
+        "Do not copy any face, hair or identity from it — those come from the first reference image.",
+      ].join(" "),
+    );
   }
 
-  const poseText = choices.pose?.prompt?.trim();
-  if (poseText || poseOrdinal) {
-    const parts = ["WARDROBE & POSE —"];
-    if (poseText) parts.push(poseText);
-    if (poseOrdinal) {
+  /*
+   * One section per customisation, named with the operator's own label. The
+   * label is what makes a fragment legible to the model: "ACCESSORY — a
+   * sheathed machete on the hip" binds far more reliably than the fragment on
+   * its own, and it is why the label is worth carrying through from the admin.
+   */
+  for (const { slot, option } of choices.customisations) {
+    const fragment = option.prompt?.trim();
+    const optionRef = referenceUrl(option);
+    if (!fragment && !optionRef) continue;
+
+    const parts = [`${slot.label.toUpperCase()} —`];
+    if (fragment) parts.push(fragment);
+    if (optionRef) {
+      const position = ordinal(imageUrls.length);
+      references.push({ role: "customisation", index: imageUrls.length, url: optionRef });
+      imageUrls.push(optionRef);
       parts.push(
-        `Use the ${poseOrdinal} reference image only for the outfit, styling and body pose.`,
-        "Do not copy the face, hair or identity from it — those come from the first reference image.",
+        `Use the ${position} reference image for this detail only.`,
+        "Do not copy the face, hair or identity from it.",
       );
     }
     sections.push(parts.join(" "));
@@ -135,8 +149,8 @@ export function buildPrompt(
 }
 
 /**
- * Prompt used by the admin "generate a scene" tool. Scenes are backdrops, so
- * the prompt explicitly excludes people — a scene reference with a person in it
+ * Prompt used by the admin "generate a backdrop" tool. These are backdrops, so
+ * the prompt explicitly excludes people — a reference with a person in it
  * confuses the identity lock at booth time.
  */
 export function buildScenePrompt(description: string): string {

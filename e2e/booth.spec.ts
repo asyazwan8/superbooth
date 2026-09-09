@@ -16,6 +16,32 @@ async function fillDetails(page: Page) {
   await page.getByRole("button", { name: "Continue" }).click();
 }
 
+/**
+ * Picks a theme and answers every question it asks.
+ *
+ * How many questions there are is a property of the theme — the superhero asks
+ * one more than the rest — so this follows the booth rather than assuming a
+ * fixed number of screens.
+ */
+async function walkTheme(page: Page, theme: string, expectedQuestions: number) {
+  await page.getByRole("button", { name: theme, exact: true }).click();
+
+  for (let answered = 0; answered < expectedQuestions; answered += 1) {
+    // Each question is its own screen with its own heading; answering one
+    // advances to the next. Cards are addressed by their position within the
+    // grid rather than by name, so this survives an operator renaming an
+    // option — but the count is asserted, because a theme silently losing its
+    // questions is exactly the regression worth catching.
+    const cards = page.getByTestId("option-card");
+    await cards.first().waitFor({ timeout: 10_000 });
+    await cards.first().click();
+  }
+
+  await expect(page.getByRole("button", { name: "Take photo" })).toBeVisible({
+    timeout: 10_000,
+  });
+}
+
 /** Walks capture → review → generating → pick, returning at the result screen. */
 async function shootAndGenerate(page: Page) {
   await expect(page.getByRole("button", { name: "Take photo" })).toBeEnabled({ timeout: 20_000 });
@@ -44,8 +70,8 @@ test("a guest goes from the idle screen to a downloadable photo", async ({ page 
 
   await fillDetails(page);
 
-  await page.getByRole("button", { name: "Neon" }).click();
-  await page.getByRole("button", { name: "3D", exact: true }).click();
+  // 80s asks about an outfit, an accessory and a backdrop.
+  await walkTheme(page, "80s", 3);
 
   await shootAndGenerate(page);
 
@@ -89,14 +115,15 @@ test("back returns through the choice steps without losing the selection", async
   await page.goto("/booth");
   await fillDetails(page);
 
-  await page.getByRole("button", { name: "Neon" }).click();
-  await expect(page.getByRole("heading", { name: /choose a style/i })).toBeVisible();
+  await page.getByRole("button", { name: "Cyberpunk", exact: true }).click();
+  // The first question the Cyberpunk theme asks.
+  await expect(page.getByRole("heading", { name: /pick your outfit/i })).toBeVisible();
 
   await page.getByRole("button", { name: "Go back" }).click();
-  await expect(page.getByRole("heading", { name: /choose your scene/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /choose your theme/i })).toBeVisible();
 
   // The earlier choice is still selected, so Back is non-destructive.
-  await expect(page.getByRole("button", { name: "Neon" })).toHaveAttribute(
+  await expect(page.getByRole("button", { name: "Cyberpunk", exact: true })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -115,8 +142,9 @@ test("the attendant PIN is verified on the server", async ({ page }) => {
 test("a guest can erase their own photo from the result page", async ({ page }) => {
   await page.goto("/booth");
   await fillDetails(page);
-  await page.getByRole("button", { name: "Jungle" }).click();
-  await page.getByRole("button", { name: "Superhero" }).click();
+  // The theme with the most questions, so the longest journey is covered too:
+  // suit, superpower, accessory and backdrop.
+  await walkTheme(page, "Superhero Comicbook", 4);
   await shootAndGenerate(page);
 
   const shareUrl = await page.getByText(/^http:\/\/localhost:3000\/p\//).innerText();

@@ -17,9 +17,9 @@ import type { Preset } from "@/lib/schema";
 export function TestGenerate({ preset, dirty }: { preset: Preset; dirty: boolean }) {
   const input = useRef<HTMLInputElement>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [sceneId, setSceneId] = useState("");
-  const [poseId, setPoseId] = useState("");
-  const [treatmentId, setTreatmentId] = useState("");
+  const [themeId, setThemeId] = useState("");
+  /** Customisation id to option id, for the theme currently selected. */
+  const [customisations, setCustomisations] = useState<Record<string, string>>({});
   const [state, setState] = useState<"idle" | "uploading" | "running" | "done" | "error">("idle");
   const [result, setResult] = useState<string | null>(null);
   const [prompt, setPrompt] = useState<string | null>(null);
@@ -57,9 +57,8 @@ export function TestGenerate({ preset, dirty }: { preset: Preset; dirty: boolean
         body: JSON.stringify({
           presetId: preset.id,
           photoUrl,
-          sceneId: sceneId || null,
-          poseId: poseId || null,
-          treatmentId: treatmentId || null,
+          themeId: themeId || null,
+          customisations,
         }),
       });
       const data = (await response.json().catch(() => ({}))) as {
@@ -201,41 +200,43 @@ export function TestGenerate({ preset, dirty }: { preset: Preset; dirty: boolean
 
       <div style={{ display: "grid", gap: "var(--space-2)" }}>
         <Select
-          aria-label="Scene to test"
-          value={sceneId}
-          onChange={(event) => setSceneId(event.target.value)}
+          aria-label="Theme to test"
+          value={themeId}
+          onChange={(event) => {
+            // The questions belong to the theme, so a leftover answer from the
+            // previous one would be resolved away server-side and silently
+            // test something other than what the selects show.
+            setThemeId(event.target.value);
+            setCustomisations({});
+          }}
         >
-          <option value="">Scene — as configured</option>
-          {preset.scenes.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.label}
+          <option value="">Theme — as configured</option>
+          {preset.themes.map((theme) => (
+            <option key={theme.id} value={theme.id}>
+              {theme.label}
             </option>
           ))}
         </Select>
-        <Select
-          aria-label="Look to test"
-          value={poseId}
-          onChange={(event) => setPoseId(event.target.value)}
-        >
-          <option value="">Look — as configured</option>
-          {preset.poses.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.label}
-            </option>
+
+        {(preset.themes.find((theme) => theme.id === themeId) ?? preset.themes[0])?.customisations
+          .filter((slot) => slot.enabled && slot.options.length > 0)
+          .map((slot) => (
+            <Select
+              key={slot.id}
+              aria-label={`${slot.label} to test`}
+              value={customisations[slot.id] ?? ""}
+              onChange={(event) =>
+                setCustomisations((current) => ({ ...current, [slot.id]: event.target.value }))
+              }
+            >
+              <option value="">{slot.label} — as configured</option>
+              {slot.options.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
           ))}
-        </Select>
-        <Select
-          aria-label="Style to test"
-          value={treatmentId}
-          onChange={(event) => setTreatmentId(event.target.value)}
-        >
-          <option value="">Style — as configured</option>
-          {preset.treatments.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
       </div>
 
       <Button tone="primary" onClick={run} disabled={!photoUrl || busy || dirty} full>

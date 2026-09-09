@@ -67,7 +67,7 @@ export async function POST(request: Request) {
         text: preset.form.consent.text,
         acceptedAt: now,
       },
-      choices: { sceneId: null, poseId: null, treatmentId: null },
+      choices: { themeId: null, customisations: {} },
       status: "started",
       timings: { startedAt: now },
       createdAt: now,

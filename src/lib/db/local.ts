@@ -2,6 +2,7 @@ import "server-only";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { presetSchema, sessionSchema, type Preset, type Session } from "@/lib/schema";
+import { upgradePresetShape } from "./migrations";
 import { defaultPreset } from "./seed";
 import { NotFoundError, type Db, type SessionQuery } from "./types";
 
@@ -36,8 +37,19 @@ function exclusive<T>(operation: () => Promise<T>): Promise<T> {
 
 async function read(): Promise<Snapshot> {
   try {
-    const raw = JSON.parse(await readFile(FILE, "utf8")) as Snapshot;
-    return { presets: raw.presets ?? {}, sessions: raw.sessions ?? {} };
+    const raw = JSON.parse(await readFile(FILE, "utf8")) as {
+      presets?: Record<string, unknown>;
+      sessions?: Record<string, Session>;
+    };
+    // Upgraded on the way out, exactly as the Firestore driver does, so a
+    // store written before a shape change still loads.
+    const presets = Object.fromEntries(
+      Object.entries(raw.presets ?? {}).map(([id, preset]) => [
+        id,
+        presetSchema.parse(upgradePresetShape(preset)),
+      ]),
+    );
+    return { presets, sessions: raw.sessions ?? {} };
   } catch {
     const preset = defaultPreset();
     return { presets: { [preset.id]: preset }, sessions: {} };

@@ -1,71 +1,85 @@
-import type { BoothOption, PublicPreset } from "@/lib/schema";
+import type { BoothOption, Customisation, PublicPreset, Theme } from "@/lib/schema";
 
 /**
  * The booth's step model, shared by the kiosk UI and the server.
  *
- * Both need the same answer to "which steps exist for this preset, and which
+ * Both need the same answer to "which steps exist for this session, and which
  * option did the guest end up with" — the client to render and to run Back,
  * the server to build the prompt. Deriving it in one place is what stops a
  * fixed-mode step from being skipped on screen but re-asked by the API.
+ *
+ * The sequence is a function of the chosen theme, not of the preset alone: a
+ * theme carries its own questions, so a guest picking Superhero is asked one
+ * more thing than a guest picking 80s. Nothing downstream may assume a fixed
+ * length.
  */
-
-export type ChoiceKey = "scene" | "pose" | "treatment";
 
 export type StepId =
   | "details"
-  | "scene"
-  | "pose"
-  | "treatment"
+  | "theme"
+  | `custom-${number}`
   | "capture"
   | "review"
   | "generating"
   | "pick"
   | "result";
 
-export const CHOICE_KEYS: ChoiceKey[] = ["scene", "pose", "treatment"];
+/** The index a `custom-N` step refers to, or null for any other step. */
+export function customisationIndex(step: StepId): number | null {
+  if (!step.startsWith("custom-")) return null;
+  const index = Number.parseInt(step.slice("custom-".length), 10);
+  return Number.isInteger(index) && index >= 0 ? index : null;
+}
 
-const COLLECTIONS: Record<ChoiceKey, keyof Pick<PublicPreset, "scenes" | "poses" | "treatments">> = {
-  scene: "scenes",
-  pose: "poses",
-  treatment: "treatments",
-};
-
-export const STEP_TITLES: Record<ChoiceKey, { title: string; subtitle: string }> = {
-  scene: { title: "Choose your scene", subtitle: "Where should this portrait happen?" },
-  pose: { title: "Pick your look", subtitle: "Costume and pose" },
-  treatment: { title: "Choose a style", subtitle: "How should it be rendered?" },
-};
-
-export function optionsFor(preset: PublicPreset, key: ChoiceKey): BoothOption[] {
-  return preset[COLLECTIONS[key]].filter((option) => option.enabled);
+export function enabledThemes(preset: PublicPreset): Theme[] {
+  return preset.themes.filter((theme) => theme.enabled);
 }
 
 /**
- * A choice step is shown only when the operator left it selectable AND there
- * is more than one option to choose between. A one-option "choice" is a tap
- * that teaches the guest nothing, so it is resolved silently instead.
+ * The theme a session ends up with, whatever route it took: the guest's
+ * choice, the operator's pinned theme, or the only one on offer.
  */
-export function isChoiceVisible(preset: PublicPreset, key: ChoiceKey): boolean {
-  if (preset.flow[key].mode === "fixed") return false;
-  return optionsFor(preset, key).length > 1;
-}
+export function resolveTheme(preset: PublicPreset, selectedId: string | null): Theme | null {
+  const themes = enabledThemes(preset);
+  if (themes.length === 0) return null;
 
-/**
- * The option a session ends up with, whatever route it took: the guest's
- * selection, the operator's fixed choice, or the single available option.
- */
-export function resolveOption(
-  preset: PublicPreset,
-  key: ChoiceKey,
-  selectedId: string | null,
-): BoothOption | null {
-  const options = optionsFor(preset, key);
-  if (options.length === 0) return null;
-
-  const config = preset.flow[key];
+  const config = preset.flow.theme;
   if (config.mode === "fixed") {
-    return options.find((option) => option.id === config.fixedId) ?? options[0];
+    return themes.find((theme) => theme.id === config.fixedId) ?? themes[0];
   }
+  if (selectedId) {
+    const chosen = themes.find((theme) => theme.id === selectedId);
+    if (chosen) return chosen;
+  }
+  return themes.length === 1 ? themes[0] : null;
+}
+
+/**
+ * The questions a theme actually asks. A slot with one option is not a choice
+ * — it is a tap that teaches the guest nothing — so it resolves silently.
+ */
+export function askedCustomisations(theme: Theme | null): Customisation[] {
+  if (!theme) return [];
+  return theme.customisations.filter(
+    (slot) => slot.enabled && slot.options.filter((option) => option.enabled).length > 1,
+  );
+}
+
+export function optionsFor(slot: Customisation): BoothOption[] {
+  return slot.options.filter((option) => option.enabled);
+}
+
+/**
+ * The option a customisation ends up with. A slot the guest was never asked
+ * about still contributes when it has exactly one option — that is the point
+ * of resolving it silently rather than dropping it.
+ */
+export function resolveCustomisation(
+  slot: Customisation,
+  selectedId: string | null | undefined,
+): BoothOption | null {
+  const options = optionsFor(slot);
+  if (options.length === 0) return null;
   if (selectedId) {
     const chosen = options.find((option) => option.id === selectedId);
     if (chosen) return chosen;
@@ -73,12 +87,39 @@ export function resolveOption(
   return options.length === 1 ? options[0] : null;
 }
 
-/** The ordered steps a guest actually walks through for this preset. */
-export function stepSequence(preset: PublicPreset): StepId[] {
+/** Every customisation that contributes to the prompt, asked or not. */
+export function resolveAllCustomisations(
+  theme: Theme | null,
+  selected: Record<string, string>,
+): { slot: Customisation; option: BoothOption }[] {
+  if (!theme) return [];
+  return theme.customisations
+    .filter((slot) => slot.enabled)
+    .map((slot) => ({ slot, option: resolveCustomisation(slot, selected[slot.id]) }))
+    .filter((entry): entry is { slot: Customisation; option: BoothOption } => entry.option !== null);
+}
+
+/**
+ * The theme step is shown only when the operator left it selectable AND there
+ * is more than one theme. A one-theme "choice" is a tap for nothing.
+ */
+export function isThemeStepVisible(preset: PublicPreset): boolean {
+  if (preset.flow.theme.mode === "fixed") return false;
+  return enabledThemes(preset).length > 1;
+}
+
+/**
+ * The ordered steps a guest walks through, given the theme they have chosen.
+ * Before a theme is picked the customisation steps are not yet known — which
+ * is why this takes the selection rather than the preset alone.
+ */
+export function stepSequence(preset: PublicPreset, themeId: string | null = null): StepId[] {
   const steps: StepId[] = ["details"];
-  for (const key of CHOICE_KEYS) {
-    if (isChoiceVisible(preset, key)) steps.push(key);
-  }
+  if (isThemeStepVisible(preset)) steps.push("theme");
+
+  const theme = resolveTheme(preset, themeId);
+  askedCustomisations(theme).forEach((_, index) => steps.push(`custom-${index}`));
+
   steps.push("capture", "review", "generating");
   if (preset.generation.variants > 1) steps.push("pick");
   steps.push("result");
@@ -104,6 +145,21 @@ export function isBackAllowed(step: StepId): boolean {
  */
 const UNCOUNTED: StepId[] = ["review", "generating", "pick", "result"];
 
-export function progressSteps(preset: PublicPreset): StepId[] {
-  return stepSequence(preset).filter((step) => !UNCOUNTED.includes(step));
+export function progressSteps(preset: PublicPreset, themeId: string | null = null): StepId[] {
+  /*
+   * Before a theme is chosen its questions are unknown, and counting only the
+   * steps we are sure of makes the indicator read "2 of 3" on the theme screen
+   * and then leap to "4 of 7" one tap later — which looks like a fault rather
+   * than progress. Estimating from the theme that asks the most keeps the
+   * total steady: it can still settle down by a step once the guest commits,
+   * but it never jumps forward.
+   */
+  const estimate =
+    themeId === null
+      ? (enabledThemes(preset)
+          .map((theme) => ({ theme, asked: askedCustomisations(theme).length }))
+          .sort((a, b) => b.asked - a.asked)[0]?.theme.id ?? null)
+      : themeId;
+
+  return stepSequence(preset, estimate).filter((step) => !UNCOUNTED.includes(step));
 }

@@ -8,16 +8,18 @@ import { z } from "zod";
  */
 
 /* ------------------------------------------------------------------ */
-/* Booth options (scenes, poses/costumes, treatments)                  */
+/* Booth options                                                       */
 /* ------------------------------------------------------------------ */
 
 export const MAX_OPTIONS = 6;
+/** Slots a theme may ask about after it is chosen. */
+export const MAX_CUSTOMISATIONS = 4;
 
 /**
- * Scenes, poses and treatments are structurally identical: a label the guest
- * taps, a prompt fragment sent to the model, and an optional reference image.
- * Keeping one type lets the admin editor reuse a single component three times
- * and keeps the prompt builder uniform.
+ * A themes's options and a customisation's options are structurally identical:
+ * a label the guest taps, a prompt fragment sent to the model, and an optional
+ * reference image. Keeping one type lets the admin editor reuse a single
+ * component everywhere and keeps the prompt builder uniform.
  */
 export const boothOptionSchema = z.object({
   id: z.string().min(1),
@@ -25,8 +27,8 @@ export const boothOptionSchema = z.object({
   /** Prompt fragment appended to the generation prompt when chosen. */
   prompt: z.string().max(1200).default(""),
   /**
-   * Reference image. For scenes and poses this is also passed to the model as
-   * an `image_urls` entry; for treatments it is only a thumbnail.
+   * Reference image, shown on the card. Also passed to the model as an
+   * `image_urls` entry when `useAsReference` is set.
    */
   imageUrl: z.string().url().nullable().default(null),
   /** Whether the reference image should be sent to the model, not just shown. */
@@ -35,6 +37,44 @@ export const boothOptionSchema = z.object({
 });
 
 export type BoothOption = z.infer<typeof boothOptionSchema>;
+
+/* ------------------------------------------------------------------ */
+/* Themes and their customisations                                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * One question a theme asks after it has been chosen — an outfit, an
+ * accessory, a backdrop, a superpower.
+ *
+ * Customisations belong to a theme rather than to the preset because their
+ * options only make sense inside one: a jungle ranger's outfits are not a
+ * superhero's, and only the superhero is asked what power they have. That is
+ * also why the guest journey's length is not known until a theme is picked.
+ */
+export const customisationSchema = z.object({
+  id: z.string().min(1),
+  /** Names the section this contributes to the prompt, e.g. "Outfit". */
+  label: z.string().min(1).max(40),
+  /** The kiosk headline for the step. Falls back to the label. */
+  title: z.string().max(60).default(""),
+  /** The line under the headline. */
+  subtitle: z.string().max(120).default(""),
+  options: z.array(boothOptionSchema).max(MAX_OPTIONS).default([]),
+  enabled: z.boolean().default(true),
+});
+
+export type Customisation = z.infer<typeof customisationSchema>;
+
+/**
+ * A theme is the one thing a guest chooses before anything else: it carries
+ * the whole look — rendering style, setting and wardrobe — and the handful of
+ * questions worth asking inside it.
+ */
+export const themeSchema = boothOptionSchema.extend({
+  customisations: z.array(customisationSchema).max(MAX_CUSTOMISATIONS).default([]),
+});
+
+export type Theme = z.infer<typeof themeSchema>;
 
 /* ------------------------------------------------------------------ */
 /* Guest form                                                          */
@@ -77,9 +117,12 @@ export const stepConfigSchema = z.object({
 export type StepConfig = z.infer<typeof stepConfigSchema>;
 
 export const flowSchema = z.object({
-  scene: stepConfigSchema,
-  pose: stepConfigSchema,
-  treatment: stepConfigSchema,
+  /**
+   * The theme step. Customisations have no flow config of their own — a slot
+   * with fewer than two options is simply not a question, so it resolves
+   * silently rather than costing the guest a tap.
+   */
+  theme: stepConfigSchema,
 });
 
 /* ------------------------------------------------------------------ */
@@ -160,9 +203,7 @@ export const presetSchema = z.object({
     fields: z.array(formFieldSchema).max(8),
     consent: consentSchema,
   }),
-  scenes: z.array(boothOptionSchema).max(MAX_OPTIONS),
-  poses: z.array(boothOptionSchema).max(MAX_OPTIONS),
-  treatments: z.array(boothOptionSchema).max(MAX_OPTIONS),
+  themes: z.array(themeSchema).max(MAX_OPTIONS),
   flow: flowSchema,
   generation: generationSchema,
   retention: retentionSchema,
@@ -199,9 +240,9 @@ export const sessionStatusSchema = z.enum([
 export type SessionStatus = z.infer<typeof sessionStatusSchema>;
 
 export const sessionChoicesSchema = z.object({
-  sceneId: z.string().nullable().default(null),
-  poseId: z.string().nullable().default(null),
-  treatmentId: z.string().nullable().default(null),
+  themeId: z.string().nullable().default(null),
+  /** Customisation id to chosen option id. Empty when a theme asks nothing. */
+  customisations: z.record(z.string(), z.string()).default({}),
 });
 
 export const sessionSchema = z.object({
@@ -221,13 +262,18 @@ export const sessionSchema = z.object({
   }),
 
   choices: sessionChoicesSchema,
+  /**
+   * The same choices as human-readable text, denormalised on purpose: an
+   * operator renaming a theme must not rewrite what last week's guests chose,
+   * and the sessions table has to stay readable after an option is deleted.
+   */
   labels: z
     .object({
-      scene: z.string().nullable().default(null),
-      pose: z.string().nullable().default(null),
-      treatment: z.string().nullable().default(null),
+      theme: z.string().nullable().default(null),
+      /** Customisation label to chosen option label. */
+      customisations: z.record(z.string(), z.string()).default({}),
     })
-    .default({ scene: null, pose: null, treatment: null }),
+    .default({ theme: null, customisations: {} }),
 
   /** Captured guest photo, in FAL storage. */
   sourceUrl: z.string().url().nullable().default(null),
@@ -290,9 +336,13 @@ export const uploadBodySchema = z.object({
 
 export const generateBodySchema = z.object({
   sessionId: z.string().min(1),
-  sceneId: z.string().nullable(),
-  poseId: z.string().nullable(),
-  treatmentId: z.string().nullable(),
+  themeId: z.string().nullable(),
+  /**
+   * Customisation id to chosen option id. Every entry is re-resolved against
+   * the live preset server-side, so an unknown key or a stale option id is
+   * dropped rather than reaching the model.
+   */
+  customisations: z.record(z.string(), z.string()).default({}),
 });
 
 export const selectBodySchema = z.object({

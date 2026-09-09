@@ -1,57 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { hasSupersededCatalogue, withShippedCatalogue } from "@/lib/db/migrations";
+import { needsThemeUpgrade, upgradePresetShape } from "@/lib/db/migrations";
 import { defaultPreset } from "@/lib/db/seed";
-import type { Preset } from "@/lib/schema";
+import { presetSchema } from "@/lib/schema";
 
 /**
- * The catalogue refresh reaches a booth still running unedited demo content
- * and stops the moment an operator has made the preset theirs. Both halves
- * matter: the first is why a deploy changes anything at all, the second is
- * why it cannot overwrite someone's event an hour before doors.
+ * A booth configured before themes existed still has `scenes`, `poses` and
+ * `treatments` on disk. The current schema requires `themes` and knows nothing
+ * about those fields, so without the upgrade the document fails validation on
+ * read and the booth stops rather than degrades.
  */
 
-/** The catalogue as it shipped before scenes carried their own wardrobe. */
-function supersededPreset(): Preset {
+/** A stored document in the shape the booth wrote before themes existed. */
+function storedLegacyPreset(): Record<string, unknown> {
+  const rest: Record<string, unknown> = { ...defaultPreset(1_000) };
+  delete rest.themes;
+  delete rest.flow;
   return {
-    ...defaultPreset(1_000),
+    ...rest,
     scenes: [
       {
         id: "scene-neon-city",
         label: "Neon City",
-        prompt:
-          "A rain-slicked futuristic city street at night, dense neon signage in magenta and " +
-          "cyan reflecting in wet asphalt, shallow depth of field, cinematic haze.",
-        imageUrl: null,
-        useAsReference: true,
-        enabled: true,
-      },
-      {
-        id: "scene-studio",
-        label: "Studio",
-        prompt:
-          "A clean professional photography studio: seamless deep-charcoal backdrop, soft key " +
-          "light from the upper left, gentle rim light separating the subject from the background.",
-        imageUrl: null,
-        useAsReference: true,
-        enabled: true,
-      },
-      {
-        id: "scene-tropical",
-        label: "Tropical Shore",
-        prompt:
-          "A golden-hour tropical beach, turquoise water and palm fronds softly blurred behind " +
-          "the subject, warm low sunlight, gentle lens flare.",
-        imageUrl: null,
-        useAsReference: true,
-        enabled: true,
-      },
-      {
-        id: "scene-ballroom",
-        label: "Grand Ballroom",
-        prompt:
-          "An opulent ballroom with crystal chandeliers, gilded columns and warm candlelight, " +
-          "richly blurred behind the subject.",
-        imageUrl: null,
+        prompt: "A rain-slicked futuristic city street at night.",
+        imageUrl: "https://cdn.example.com/neon-city.jpg",
         useAsReference: true,
         enabled: true,
       },
@@ -60,29 +31,7 @@ function supersededPreset(): Preset {
       {
         id: "pose-hero",
         label: "Hero Stance",
-        prompt:
-          "Confident three-quarter hero stance, shoulders squared and slightly angled to camera, " +
-          "chin level, direct eye contact. Smart contemporary outfit with clean tailored lines.",
-        imageUrl: null,
-        useAsReference: true,
-        enabled: true,
-      },
-      {
-        id: "pose-formal",
-        label: "Formal",
-        prompt:
-          "Classic upright formal portrait pose, hands relaxed, warm closed-mouth smile. " +
-          "Formal evening wear in deep jewel tones with subtle sheen.",
-        imageUrl: null,
-        useAsReference: true,
-        enabled: true,
-      },
-      {
-        id: "pose-casual",
-        label: "Casual",
-        prompt:
-          "Relaxed natural pose, weight on one leg, easy open smile. Casual modern streetwear " +
-          "with a layered jacket.",
+        prompt: "Confident three-quarter hero stance.",
         imageUrl: null,
         useAsReference: true,
         enabled: true,
@@ -92,124 +41,64 @@ function supersededPreset(): Preset {
       {
         id: "treatment-2d",
         label: "2D Illustration",
-        prompt:
-          "A hand-drawn 2D character illustration: clean confident linework, flat cel-shaded " +
-          "colour with two-tone shadows, vibrant limited palette, subtle paper grain. " +
-          "Stylised but anatomically faithful to the subject.",
-        imageUrl: null,
-        useAsReference: false,
-        enabled: true,
-      },
-      {
-        id: "treatment-3d",
-        label: "3D Character",
-        prompt:
-          "A polished 3D animated feature-film character render: soft subsurface-scattering skin, " +
-          "large expressive eyes, slightly stylised proportions, rich global illumination and " +
-          "soft contact shadows, glossy highlights in the hair.",
-        imageUrl: null,
-        useAsReference: false,
-        enabled: true,
-      },
-      {
-        id: "treatment-abstract",
-        label: "Abstract",
-        prompt:
-          "An abstract mixed-media portrait: bold geometric colour fields, torn-paper collage " +
-          "edges, expressive brush strokes and halftone texture breaking across the composition, " +
-          "while the face itself stays clear and readable.",
-        imageUrl: null,
-        useAsReference: false,
-        enabled: true,
-      },
-      {
-        id: "treatment-editorial",
-        label: "Editorial",
-        prompt:
-          "A high-end editorial photograph: crisp medium-format detail, controlled studio " +
-          "lighting with a soft key and subtle rim, refined colour grade, magazine-cover polish.",
+        prompt: "A hand-drawn 2D character illustration.",
         imageUrl: null,
         useAsReference: false,
         enabled: true,
       },
     ],
+    flow: {
+      scene: { mode: "select", fixedId: null },
+      pose: { mode: "select", fixedId: null },
+      treatment: { mode: "fixed", fixedId: "treatment-2d" },
+    },
   };
 }
 
-describe("hasSupersededCatalogue", () => {
-  it("recognises a booth still running the catalogue it shipped with", () => {
-    expect(hasSupersededCatalogue(supersededPreset())).toBe(true);
+describe("needsThemeUpgrade", () => {
+  it("recognises a document written before themes existed", () => {
+    expect(needsThemeUpgrade(storedLegacyPreset())).toBe(true);
   });
 
-  it("leaves a preset alone once one prompt has been edited", () => {
-    const edited = supersededPreset();
-    edited.scenes[1] = { ...edited.scenes[1], prompt: "Our own backdrop." };
-    expect(hasSupersededCatalogue(edited)).toBe(false);
+  it("leaves a current document alone", () => {
+    expect(needsThemeUpgrade(defaultPreset())).toBe(false);
   });
 
-  it("leaves a preset alone once an option has been renamed", () => {
-    const edited = supersededPreset();
-    edited.treatments[0] = { ...edited.treatments[0], label: "Cartoon" };
-    expect(hasSupersededCatalogue(edited)).toBe(false);
+  it("does not fire twice", () => {
+    expect(needsThemeUpgrade(upgradePresetShape(storedLegacyPreset()))).toBe(false);
   });
 
-  it("still matches when the operator has uploaded a reference image", () => {
-    // The case a live booth was actually in. The swap retires this scene, so
-    // there is nothing for the picture to belong to afterwards either way —
-    // treating the upload as authored content would only pin the booth to a
-    // catalogue nobody chose.
-    const withArt = supersededPreset();
-    withArt.scenes[0] = {
-      ...withArt.scenes[0],
-      imageUrl: "https://cdn.example.com/neon-city.jpg",
-    };
-    expect(hasSupersededCatalogue(withArt)).toBe(true);
-    expect(withShippedCatalogue(withArt).scenes.map((option) => option.label)).toEqual([
-      "Neon",
-      "Space",
-      "Cyberpunk",
-      "Jungle",
-    ]);
-  });
-
-  it("leaves a preset alone once an option has been added or removed", () => {
-    const trimmed = supersededPreset();
-    trimmed.scenes = trimmed.scenes.slice(0, 3);
-    expect(hasSupersededCatalogue(trimmed)).toBe(false);
-  });
-
-  it("does not fire twice — the shipped catalogue is not the superseded one", () => {
-    expect(hasSupersededCatalogue(defaultPreset())).toBe(false);
-    expect(hasSupersededCatalogue(withShippedCatalogue(supersededPreset()))).toBe(false);
+  it("ignores anything that is not a document", () => {
+    expect(needsThemeUpgrade(null)).toBe(false);
+    expect(needsThemeUpgrade([])).toBe(false);
+    expect(needsThemeUpgrade("preset")).toBe(false);
   });
 });
 
-describe("withShippedCatalogue", () => {
-  it("swaps in the shipped options", () => {
-    const refreshed = withShippedCatalogue(supersededPreset(), 5_000);
+describe("upgradePresetShape", () => {
+  it("produces a document the current schema accepts", () => {
+    const upgraded = presetSchema.parse(upgradePresetShape(storedLegacyPreset()));
 
-    expect(refreshed.scenes.map((option) => option.label)).toEqual([
-      "Neon",
-      "Space",
-      "Cyberpunk",
-      "Jungle",
-    ]);
-    // The costume step drops out of the sequence once the list is empty.
-    expect(refreshed.poses).toEqual([]);
-    expect(refreshed.treatments.map((option) => option.label)).toEqual([
-      "2D",
-      "3D",
+    expect(upgraded.themes.map((theme) => theme.label)).toEqual([
       "80s",
-      "Superhero",
+      "Cyberpunk",
+      "Jungle Ranger",
+      "Superhero Comicbook",
     ]);
+    // The retired families are gone rather than carried as dead weight.
+    expect(upgraded).not.toHaveProperty("scenes");
+    expect(upgraded).not.toHaveProperty("poses");
+    expect(upgraded).not.toHaveProperty("treatments");
   });
 
-  it("touches nothing outside the three catalogues", () => {
-    const before = supersededPreset();
-    before.branding = { ...before.branding, logoUrl: "https://cdn.example.com/logo.png" };
-    before.generation = { ...before.generation, variants: 1, countdownSec: 5 };
+  it("drops a flow that pinned a step which no longer exists", () => {
+    const upgraded = presetSchema.parse(upgradePresetShape(storedLegacyPreset()));
+    expect(upgraded.flow).toEqual({ theme: { mode: "select", fixedId: null } });
+  });
 
-    const after = withShippedCatalogue(before, 5_000);
+  it("carries across everything outside the catalogue", () => {
+    const before = storedLegacyPreset();
+    const after = presetSchema.parse(upgradePresetShape(before));
 
     expect(after.id).toBe(before.id);
     expect(after.isActive).toBe(before.isActive);
@@ -218,6 +107,10 @@ describe("withShippedCatalogue", () => {
     expect(after.form).toEqual(before.form);
     expect(after.generation).toEqual(before.generation);
     expect(after.retention).toEqual(before.retention);
-    expect(after.updatedAt).toBe(5_000);
+  });
+
+  it("returns a current document untouched", () => {
+    const current = defaultPreset();
+    expect(upgradePresetShape(current)).toBe(current);
   });
 });

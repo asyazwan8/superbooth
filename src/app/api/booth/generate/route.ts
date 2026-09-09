@@ -1,5 +1,5 @@
 import { badRequest, handle, notFound, ok, readJson } from "@/lib/api";
-import { resolveOption } from "@/lib/booth/steps";
+import { resolveAllCustomisations, resolveTheme } from "@/lib/booth/steps";
 import { getActivePresetOrDefault, getDb, sanitisePreset } from "@/lib/db";
 import { buildPrompt } from "@/lib/fal/prompt";
 import { getProvider } from "@/lib/fal/provider";
@@ -30,14 +30,15 @@ export async function POST(request: Request) {
       throw badRequest("No retries remaining for this session.");
     }
 
+    // Re-resolved server-side rather than trusted: a stale or tampered client
+    // can name any id, and the operator's pinned theme wins regardless.
     const publicPreset = sanitisePreset(preset);
-    const scene = resolveOption(publicPreset, "scene", body.sceneId);
-    const pose = resolveOption(publicPreset, "pose", body.poseId);
-    const treatment = resolveOption(publicPreset, "treatment", body.treatmentId);
+    const theme = resolveTheme(publicPreset, body.themeId);
+    const customisations = resolveAllCustomisations(theme, body.customisations);
 
     const { prompt, imageUrls } = buildPrompt(
       publicPreset,
-      { scene, pose, treatment },
+      { theme, customisations },
       session.sourceUrl,
     );
 
@@ -58,14 +59,16 @@ export async function POST(request: Request) {
       attempts: session.attempts + 1,
       imagesGenerated: session.imagesGenerated + preset.generation.variants,
       choices: {
-        sceneId: scene?.id ?? null,
-        poseId: pose?.id ?? null,
-        treatmentId: treatment?.id ?? null,
+        themeId: theme?.id ?? null,
+        customisations: Object.fromEntries(
+          customisations.map(({ slot, option }) => [slot.id, option.id]),
+        ),
       },
       labels: {
-        scene: scene?.label ?? null,
-        pose: pose?.label ?? null,
-        treatment: treatment?.label ?? null,
+        theme: theme?.label ?? null,
+        customisations: Object.fromEntries(
+          customisations.map(({ slot, option }) => [slot.label, option.label]),
+        ),
       },
       timings: { ...session.timings, generateStartedAt: Date.now() },
     });
