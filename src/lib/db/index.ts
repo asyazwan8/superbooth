@@ -1,6 +1,7 @@
 import "server-only";
 import { firebaseConfigured } from "@/lib/env";
 import { presetSchema, type Preset, type PublicPreset } from "@/lib/schema";
+import { hasSupersededCatalogue, withShippedCatalogue } from "./migrations";
 import { defaultPreset } from "./seed";
 import type { Db } from "./types";
 
@@ -28,11 +29,24 @@ export function resetDbCache(): void {
  * The live preset, falling back to the built-in demo so a booth that has never
  * been configured still runs. A booth that shows an error because nobody
  * pressed "activate" is a worse failure than one showing sensible defaults.
+ *
+ * A live preset still carrying an unedited demo catalogue is brought up to the
+ * shipped one on the way past. That only fires while the catalogue is exactly
+ * as it shipped — see ./migrations — so it reaches a booth nobody has
+ * configured and never touches an operator's own options. The write is
+ * idempotent and stops matching once applied, so it happens once rather than
+ * on every read.
  */
 export async function getActivePresetOrDefault(): Promise<Preset> {
   const db = await getDb();
   const active = await db.getActivePreset();
-  if (active) return active;
+
+  if (active) {
+    if (!hasSupersededCatalogue(active)) return active;
+    const refreshed = withShippedCatalogue(active);
+    await db.savePreset(refreshed);
+    return refreshed;
+  }
 
   const seeded = defaultPreset();
   await db.savePreset(seeded);
