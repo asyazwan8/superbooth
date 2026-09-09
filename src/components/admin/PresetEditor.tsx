@@ -6,7 +6,18 @@ import { ImageUploadField } from "@/components/admin/ImageUploadField";
 import { KioskPreview } from "@/components/admin/KioskPreview";
 import { OptionEditor } from "@/components/admin/OptionEditor";
 import { TestGenerate } from "@/components/admin/TestGenerate";
-import { Button, Card, Field, Input, Select, Textarea, Toggle } from "@/components/admin/ui";
+import {
+  Button,
+  Card,
+  ErrorNote,
+  Field,
+  Input,
+  SectionTitle,
+  Select,
+  Textarea,
+  Toggle,
+} from "@/components/admin/ui";
+import { Badge } from "@/components/ds/core";
 import { estimateCostUsd } from "@/lib/fal/prompt";
 import { newOptionId } from "@/lib/ids";
 import type { FormField, Preset, PublicPreset } from "@/lib/schema";
@@ -77,25 +88,51 @@ export function PresetEditor({ initial }: { initial: Preset }) {
   };
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div className="min-w-0">
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
+      <header
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "var(--space-4)",
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          {/* The name is edited in place, as a title rather than a form field —
+              renaming an event is a one-word change, not a trip to a modal. */}
           <Input
             value={preset.name}
             onChange={(event) => patch({ name: event.target.value })}
-            className="!border-transparent !bg-transparent !px-0 font-display !text-2xl font-semibold"
             aria-label="Event name"
+            style={{
+              border: "none",
+              background: "transparent",
+              padding: 0,
+              color: "var(--text-invert)",
+              fontFamily: "var(--font-display)",
+              fontSize: 30,
+              lineHeight: 1,
+              textTransform: "uppercase",
+            }}
           />
-          <p className="mt-0.5 text-xs text-ink-500">
+          <p
+            style={{
+              margin: "var(--space-2) 0 0",
+              font: "var(--type-meta)",
+              fontSize: 12,
+              color: "var(--text-invert-muted)",
+            }}
+          >
             {preset.isActive ? "This event is live on the booth." : "Draft — not live."}
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
           {dirty ? (
-            <span className="text-xs text-warn">Unsaved changes</span>
+            <Badge tone="warn">Unsaved changes</Badge>
           ) : savedAt ? (
-            <span className="text-xs text-positive">Saved</span>
+            <Badge tone="positive">Saved</Badge>
           ) : null}
           <Button tone="primary" onClick={save} disabled={saving || !dirty}>
             {saving ? "Saving…" : "Save changes"}
@@ -103,27 +140,55 @@ export function PresetEditor({ initial }: { initial: Preset }) {
         </div>
       </header>
 
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
+      {error ? <ErrorNote>{error}</ErrorNote> : null}
 
-      <nav className="flex flex-wrap gap-1 border-b border-ink-800">
-        {TABS.map((entry) => (
-          <button
-            key={entry}
-            type="button"
-            onClick={() => setTab(entry)}
-            className={`-mb-px border-b-2 px-3 py-2 text-sm transition ${
-              tab === entry
-                ? "border-accent text-ink-100"
-                : "border-transparent text-ink-400 hover:text-ink-200"
-            }`}
-          >
-            {entry}
-          </button>
-        ))}
+      <nav
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "var(--space-1)",
+          borderBottom: "var(--border-hard) solid var(--sb-gold)",
+        }}
+      >
+        {TABS.map((entry) => {
+          const on = tab === entry;
+          return (
+            <button
+              key={entry}
+              type="button"
+              onClick={() => setTab(entry)}
+              className="sb-hover"
+              style={{
+                marginBottom: -3,
+                minHeight: "var(--tap-min-desk)",
+                padding: "0 var(--space-4)",
+                cursor: "pointer",
+                background: on ? "var(--sb-gold)" : "transparent",
+                color: on ? "var(--sb-ink)" : "var(--text-invert-muted)",
+                border: "var(--border-hard) solid",
+                borderColor: on ? "var(--line-hard)" : "transparent",
+                borderBottomColor: on ? "var(--sb-gold)" : "transparent",
+                font: "var(--type-label)",
+                letterSpacing: "var(--tracking-label)",
+                textTransform: "uppercase",
+              }}
+            >
+              {entry}
+            </button>
+          );
+        })}
       </nav>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
-        <div className="min-w-0 space-y-6">
+      <div
+        className="sb-split"
+        style={{
+          display: "grid",
+          gap: "var(--space-8)",
+          gridTemplateColumns: "minmax(0, 1fr) 280px",
+          alignItems: "start",
+        }}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
           {tab === "Branding" ? <BrandingTab preset={preset} patch={patch} /> : null}
           {tab === "Guest form" ? <FormTab preset={preset} patch={patch} /> : null}
 
@@ -167,7 +232,15 @@ export function PresetEditor({ initial }: { initial: Preset }) {
           {tab === "Generation" ? <GenerationTab preset={preset} patch={patch} /> : null}
         </div>
 
-        <aside className="space-y-6 lg:sticky lg:top-20 lg:self-start">
+        <aside
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--space-6)",
+            position: "sticky",
+            top: 88,
+          }}
+        >
           <KioskPreview preset={previewPreset} />
           <TestGenerate preset={preset} dirty={dirty} />
         </aside>
@@ -190,66 +263,113 @@ function BrandingTab({
     patch({ branding: { ...branding, ...changes } });
 
   return (
-    <div className="space-y-6">
-      {/* items-start so the short masthead card does not stretch to match the
-          tall 9:16 overlay preview beside it. */}
-      <div className="grid items-start gap-6 sm:grid-cols-2">
-        <Card className="space-y-3 p-4">
-          <h3 className="text-sm font-semibold text-ink-100">Masthead</h3>
-          <p className="text-xs text-ink-500">
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
+      {/* alignItems start so the short masthead card does not stretch to match
+          the tall 9:16 overlay preview beside it. */}
+      <div
+        className="sb-split"
+        style={{
+          display: "grid",
+          alignItems: "start",
+          gap: "var(--space-6)",
+          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+        }}
+      >
+        <Card style={{ padding: "var(--space-4)" }}>
+          <SectionTitle>Masthead</SectionTitle>
+          <p
+            style={{
+              margin: "var(--space-3) 0",
+              font: "var(--type-body-sm)",
+              color: "var(--text-muted)",
+            }}
+          >
             Shown on the idle screen. Leave empty to use the Superbooth wordmark.
           </p>
           <ImageUploadField
             value={branding.logoUrl}
             kind="logo"
-            frameClassName="aspect-[3/2] w-full"
+            frameStyle={{ aspectRatio: "3 / 2", width: "100%" }}
             emptyLabel="Logo (PNG with transparency)"
             onChange={(logoUrl) => set({ logoUrl })}
           />
         </Card>
 
-        <Card className="space-y-3 p-4">
-          <h3 className="text-sm font-semibold text-ink-100">Photo overlay</h3>
-          <p className="text-xs text-ink-500">
+        <Card style={{ padding: "var(--space-4)" }}>
+          <SectionTitle>Photo overlay</SectionTitle>
+          <p
+            style={{
+              margin: "var(--space-3) 0",
+              font: "var(--type-body-sm)",
+              color: "var(--text-muted)",
+            }}
+          >
             A transparent 1080×1920 PNG composited onto every finished photo.
           </p>
           <ImageUploadField
             value={branding.overlayUrl}
             kind="overlay"
-            frameClassName="aspect-[9/16] h-72"
+            frameStyle={{ aspectRatio: "9 / 16", height: 288 }}
             emptyLabel="Overlay (1080×1920 PNG)"
             onChange={(overlayUrl) => set({ overlayUrl, overlayEnabled: Boolean(overlayUrl) })}
           />
-          <Toggle
-            checked={branding.overlayEnabled}
-            onChange={(overlayEnabled) => set({ overlayEnabled })}
-            label="Apply overlay to photos"
-          />
+          <div style={{ marginTop: "var(--space-3)" }}>
+            <Toggle
+              checked={branding.overlayEnabled}
+              onChange={(overlayEnabled) => set({ overlayEnabled })}
+              label="Apply overlay to photos"
+            />
+          </div>
         </Card>
       </div>
 
-      <Card className="grid gap-4 p-4 sm:grid-cols-2">
-        <Field label="Accent colour" hint="Drives every button and highlight in the booth.">
-          <div className="flex gap-2">
+      <Card
+        className="sb-split"
+        style={{
+          display: "grid",
+          gap: "var(--space-4)",
+          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+          padding: "var(--space-4)",
+        }}
+      >
+        <Field
+          label="Accent colour"
+          hint="The mount colour behind the photo on the shared result page. The booth keeps the Superbooth palette, whose contrast pairings are fixed."
+        >
+          <div style={{ display: "flex", gap: "var(--space-2)" }}>
             <input
               type="color"
               value={branding.accent}
               onChange={(event) => set({ accent: event.target.value })}
-              className="h-9 w-12 rounded-lg border border-ink-700 bg-ink-850"
               aria-label="Accent colour"
+              style={{
+                height: 40,
+                width: 52,
+                padding: 2,
+                background: "var(--surface-panel)",
+                border: "var(--border-hard) solid var(--line-hard)",
+                cursor: "pointer",
+              }}
             />
             <Input value={branding.accent} onChange={(event) => set({ accent: event.target.value })} />
           </div>
         </Field>
 
-        <Field label="Secondary accent" hint="Used for softer highlights and glows.">
-          <div className="flex gap-2">
+        <Field label="Secondary accent" hint="A second event colour, available to the result page and exports.">
+          <div style={{ display: "flex", gap: "var(--space-2)" }}>
             <input
               type="color"
               value={branding.accentSoft}
               onChange={(event) => set({ accentSoft: event.target.value })}
-              className="h-9 w-12 rounded-lg border border-ink-700 bg-ink-850"
               aria-label="Secondary accent colour"
+              style={{
+                height: 40,
+                width: 52,
+                padding: 2,
+                background: "var(--surface-panel)",
+                border: "var(--border-hard) solid var(--line-hard)",
+                cursor: "pointer",
+              }}
             />
             <Input
               value={branding.accentSoft}
@@ -294,17 +414,33 @@ function FormTab({
     setFields(form.fields.map((field) => (field.id === id ? { ...field, ...changes } : field)));
 
   return (
-    <div className="space-y-6">
-      <section className="space-y-3">
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
+      <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
         <div>
-          <h2 className="font-display text-lg font-semibold text-ink-100">What you collect</h2>
-          <p className="mt-0.5 text-sm text-ink-400">
+          <SectionTitle>What you collect</SectionTitle>
+          <p
+            style={{
+              margin: "var(--space-3) 0 0",
+              font: "var(--type-body-sm)",
+              color: "var(--text-invert-muted)",
+            }}
+          >
             Every field is one more thing between a guest and their photo. Two is usually right.
           </p>
         </div>
 
         {form.fields.map((field) => (
-          <Card key={field.id} className="grid gap-3 p-4 sm:grid-cols-[1fr_1fr_120px_auto]">
+          <Card
+            key={field.id}
+            className="sb-split"
+            style={{
+              display: "grid",
+              gap: "var(--space-3)",
+              gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) 120px auto",
+              alignItems: "start",
+              padding: "var(--space-4)",
+            }}
+          >
             <Field label="Label">
               <Input
                 value={field.label}
@@ -321,6 +457,7 @@ function FormTab({
             </Field>
             <Field label="Type">
               <Select
+                aria-label="Field type"
                 value={field.type}
                 onChange={(event) =>
                   update(field.id, { type: event.target.value as FormField["type"] })
@@ -331,7 +468,14 @@ function FormTab({
                 <option value="tel">Phone</option>
               </Select>
             </Field>
-            <div className="flex items-end gap-3 pb-1">
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "var(--space-3)",
+                paddingTop: 26,
+              }}
+            >
               <Toggle
                 checked={field.required}
                 onChange={(required) => update(field.id, { required })}
@@ -369,28 +513,48 @@ function FormTab({
         </Button>
       </section>
 
-      <section className="space-y-3">
+      <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
         <div>
-          <h2 className="font-display text-lg font-semibold text-ink-100">Consent</h2>
-          <p className="mt-0.5 text-sm text-ink-400">
+          <SectionTitle>Consent</SectionTitle>
+          <p
+            style={{
+              margin: "var(--space-3) 0 0",
+              font: "var(--type-body-sm)",
+              color: "var(--text-invert-muted)",
+            }}
+          >
             The exact wording shown is stored with every session. Bump the version whenever you
             change it, so older records stay tied to the text those guests actually agreed to.
           </p>
         </div>
 
-        <Card className="space-y-4 p-4">
+        <Card
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--space-4)",
+            padding: "var(--space-4)",
+          }}
+        >
           <Field label="Consent text">
             <Textarea
               value={form.consent.text}
               maxLength={2000}
-              className="min-h-32"
+              style={{ minHeight: 128 }}
               onChange={(event) =>
                 patch({ form: { ...form, consent: { ...form.consent, text: event.target.value } } })
               }
             />
           </Field>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div
+            className="sb-split"
+            style={{
+              display: "grid",
+              gap: "var(--space-4)",
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            }}
+          >
             <Field label="Version">
               <Input
                 value={form.consent.version}
@@ -439,13 +603,21 @@ function GenerationTab({
   const perGuest = estimateCostUsd(generation.variants, generation.resolution);
 
   return (
-    <div className="space-y-6">
-      <Card className="grid gap-4 p-4 sm:grid-cols-2">
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
+      <Card className="sb-split"
+        style={{
+          display: "grid",
+          gap: "var(--space-4)",
+          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+          alignItems: "start",
+          padding: "var(--space-4)",
+        }}>
         <Field
           label="Variants per guest"
           hint={`Each variant is a billed generation. About $${perGuest.toFixed(2)} per guest, before retries.`}
         >
           <Select
+            aria-label="Variants per guest"
             value={String(generation.variants)}
             onChange={(event) => set({ variants: Number(event.target.value) })}
           >
@@ -459,6 +631,7 @@ function GenerationTab({
 
         <Field label="Resolution" hint="4K costs double and takes noticeably longer.">
           <Select
+            aria-label="Resolution"
             value={generation.resolution}
             onChange={(event) =>
               set({ resolution: event.target.value as Preset["generation"]["resolution"] })
@@ -516,7 +689,7 @@ function GenerationTab({
           />
         </Field>
 
-        <div className="sm:col-span-2">
+        <div style={{ gridColumn: "1 / -1" }}>
           <Toggle
             checked={generation.mirrorPreview}
             onChange={(mirrorPreview) => set({ mirrorPreview })}
@@ -525,7 +698,7 @@ function GenerationTab({
         </div>
       </Card>
 
-      <Card className="space-y-3 p-4">
+      <Card style={{ padding: "var(--space-4)" }}>
         <Field
           label="House style"
           hint="Added to every prompt for this event — use it for a look you want across all styles, without editing each one."

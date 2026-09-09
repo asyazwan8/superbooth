@@ -35,10 +35,20 @@ test("an operator duplicates an event, edits it, and takes it live", async ({ pa
   await signIn(page);
   await expect(page.getByRole("heading", { name: "Events" })).toBeVisible();
 
+  // Remembered so this test can put it back. The local store outlives a run,
+  // so leaving a different event live means the next `npm run e2e` walks the
+  // booth against a preset whose flow the kiosk specs do not expect.
+  const livePresets = await (await page.request.get("/api/admin/presets")).json();
+  const previouslyLive = (livePresets.presets as { id: string; isActive: boolean }[]).find(
+    (preset) => preset.isActive,
+  );
+
   await presetRow(page, "Superbooth Demo").getByRole("button", { name: "Duplicate" }).click();
 
   await page.waitForURL(/\/admin\/presets\//);
   await expect(page.getByText(/draft — not live/i)).toBeVisible();
+
+  const createdId = page.url().split("/admin/presets/")[1];
 
   // Rename it and change the headline the booth shows.
   await page.getByLabel("Event name").fill("KL Launch Night");
@@ -79,6 +89,14 @@ test("an operator duplicates an event, edits it, and takes it live", async ({ pa
   expect(preset.name).toBe("KL Launch Night");
   expect(preset.branding.attractHeadline).toBe("Be the poster");
   expect(preset.flow.treatment.mode).toBe("fixed");
+
+  // Put the booth back on its original event, then remove the one this test
+  // made. Rows are addressed by name, so a leftover "KL Launch Night" makes
+  // the next run's filter match two of them.
+  if (previouslyLive) {
+    await page.request.post(`/api/admin/presets/${previouslyLive.id}/activate`);
+  }
+  await page.request.delete(`/api/admin/presets/${createdId}`);
 });
 
 test("the live event cannot be deleted out from under the booth", async ({ page }) => {
@@ -98,19 +116,23 @@ test("the live event cannot be deleted out from under the booth", async ({ page 
 test("a saved preset cannot make itself live", async ({ page }) => {
   await signIn(page);
 
-  const presets = await (await page.request.get("/api/admin/presets")).json();
-  const draft = (presets.presets as { id: string; isActive: boolean }[]).find(
-    (preset) => !preset.isActive,
-  );
-  expect(draft).toBeDefined();
+  // Self-contained: a new preset is always a draft. Finding one in the store
+  // instead meant depending on an event another test happened to leave behind,
+  // and this failed the moment that test started cleaning up after itself.
+  const created = await page.request.post("/api/admin/presets", {
+    data: { name: "Self-activation fixture" },
+  });
+  const { preset: draft } = (await created.json()) as { preset: { id: string } };
 
-  const full = await (await page.request.get(`/api/admin/presets/${draft!.id}`)).json();
-  const response = await page.request.put(`/api/admin/presets/${draft!.id}`, {
+  const full = await (await page.request.get(`/api/admin/presets/${draft.id}`)).json();
+  const response = await page.request.put(`/api/admin/presets/${draft.id}`, {
     data: { ...full.preset, isActive: true },
   });
 
   const saved = await response.json();
   expect(saved.preset.isActive).toBe(false);
+
+  await page.request.delete(`/api/admin/presets/${draft.id}`);
 });
 
 test("the sessions table lists guests and exports them as CSV", async ({ page }) => {
@@ -177,6 +199,8 @@ test("a test generation honours the style the operator explicitly picked", async
 
   expect(prompt).toContain("hand-drawn 2D character illustration");
   expect(prompt).not.toContain("3D animated feature-film");
+
+  await page.request.delete(`/api/admin/presets/${target.id}`);
 });
 
 test("the public gallery exposes photos but never personal data", async ({ page }) => {

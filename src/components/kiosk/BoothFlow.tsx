@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { AttendantMenu } from "@/components/kiosk/AttendantMenu";
 import { IdleOverlay } from "@/components/kiosk/IdleOverlay";
 import { KioskFrame } from "@/components/kiosk/KioskFrame";
+import type { StageGround } from "@/components/ds/booth";
+import { Badge } from "@/components/ds/core";
 import { CaptureStep } from "@/components/kiosk/steps/CaptureStep";
 import { ChoiceStep } from "@/components/kiosk/steps/ChoiceStep";
 import { DetailsStep } from "@/components/kiosk/steps/DetailsStep";
@@ -37,6 +39,24 @@ const POLL_INTERVAL_MS = 1_200;
 /** Long enough to cover a slow queue, short enough to not strand a guest. */
 const GENERATION_TIMEOUT_MS = 180_000;
 const RESULT_AUTO_RESET_SEC = 45;
+
+/**
+ * The stage colour each step sits on. Changing ground between steps is how the
+ * journey reads as progress on a screen with no page transitions: paper while
+ * the guest is working, ink once the booth is.
+ */
+const GROUNDS: Record<string, StageGround> = {
+  details: "menu",
+  scene: "menu",
+  pose: "menu",
+  treatment: "menu",
+  capture: "stage",
+  review: "menu",
+  generating: "stage",
+  pick: "stage",
+  result: "stage",
+  error: "purple",
+};
 
 interface SessionState {
   sessionId: string | null;
@@ -331,6 +351,8 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
             onConsentChange={setConsent}
             onSubmit={submitDetails}
             busy={busy}
+            stepNumber={dotIndex + 1}
+            stepTotal={progress.length}
           />
         );
 
@@ -411,17 +433,31 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
   })();
 
   return (
-    <KioskFrame accent={preset.branding.accent} accentSoft={preset.branding.accentSoft}>
+    <KioskFrame
+      ground={GROUNDS[error ? "error" : step] ?? "stage"}
+      accent={preset.branding.accent}
+      accentSoft={preset.branding.accentSoft}
+    >
       <AttendantMenu onReset={reset} />
 
-      {/* Corner-pinned so it never collides with a step's own header. */}
+      {/* Flush into the bottom-right corner, below every footer's own bottom
+          padding — the one place no step's controls reach. The top right is
+          the attendant hotspot and must stay unmarked. */}
       {mock ? (
-        <span className="pointer-events-none absolute bottom-2 left-3 z-40 rounded-full bg-warn/15 px-2.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-warn">
-          Demo
+        <span
+          style={{
+            position: "absolute",
+            bottom: 0,
+            right: 0,
+            zIndex: 40,
+            pointerEvents: "none",
+          }}
+        >
+          <Badge tone="warn">Demo</Badge>
         </span>
       ) : null}
 
-      <div className="h-full pt-6">{body}</div>
+      <div style={{ height: "100%" }}>{body}</div>
 
       {idle.warning && !error ? (
         <IdleOverlay countdown={idle.countdown} onStay={idle.dismiss} onReset={reset} />

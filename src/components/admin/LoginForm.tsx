@@ -63,8 +63,14 @@ export function LoginForm({ mode }: { mode: "firebase" | "pin" }) {
   };
 
   return (
-    <Card className="w-full max-w-sm p-6">
-      <form onSubmit={submit} className="space-y-4">
+    <Card
+      shadow="large"
+      style={{ width: "100%", maxWidth: 380, padding: "var(--space-6)" }}
+    >
+      <form
+        onSubmit={submit}
+        style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}
+      >
         {mode === "firebase" ? (
           <>
             <Field label="Email">
@@ -103,9 +109,23 @@ export function LoginForm({ mode }: { mode: "firebase" | "pin" }) {
           </>
         )}
 
-        {error ? <p className="text-sm text-danger">{error}</p> : null}
+        {error ? (
+          <p
+            role="alert"
+            style={{
+              margin: 0,
+              padding: "8px 12px",
+              background: "var(--sb-pink)",
+              color: "var(--sb-paper)",
+              border: "var(--border-hair) solid var(--line-hard)",
+              font: "var(--type-body-sm)",
+            }}
+          >
+            {error}
+          </p>
+        ) : null}
 
-        <Button type="submit" tone="primary" className="w-full" disabled={busy}>
+        <Button type="submit" tone="primary" full disabled={busy}>
           {busy ? "Signing in…" : "Sign in"}
         </Button>
       </form>

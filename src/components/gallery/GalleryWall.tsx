@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { SuperboothLogo } from "@/components/brand/SuperboothLogo";
+import { SuperLogo } from "@/components/ds/booth";
 
 export interface GalleryItem {
   id: string;
@@ -55,34 +55,85 @@ export function GalleryWall({ initial }: { initial: GalleryItem[] }) {
 
   if (items.length === 0) {
     return (
-      <main className="@container flex min-h-dvh flex-col items-center justify-center gap-8 bg-ink-950 px-10">
-        <div className="w-full max-w-sm">
-          <SuperboothLogo subline="Live gallery" />
-        </div>
-        <p className="text-ink-500">Photos will appear here as guests finish.</p>
+      <main
+        style={{
+          minHeight: "100dvh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "var(--space-8)",
+          padding: "var(--space-10)",
+          background: "var(--surface-invert)",
+          backgroundImage: "var(--texture-halftone)",
+          backgroundSize: "var(--texture-halftone-size)",
+          color: "var(--text-invert)",
+        }}
+      >
+        <SuperLogo height="180px" subline="Live gallery" />
+        <p
+          style={{
+            margin: 0,
+            font: "var(--type-label)",
+            letterSpacing: "var(--tracking-label-wide)",
+            textTransform: "uppercase",
+            color: "var(--sb-gold)",
+            animation: "sb-blink 1.4s steps(1, end) infinite",
+          }}
+        >
+          Photos will appear here as guests finish.
+        </p>
       </main>
     );
   }
 
   return (
-    <main className="min-h-dvh bg-ink-950 p-4">
-      <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-        {items.map((item) => (
-          <figure
-            key={item.id}
-            className={`relative aspect-[9/16] overflow-hidden rounded-xl sb-hairline transition
-              ${item.id === newest ? "ring-2 ring-accent" : ""}`}
-          >
-            <Image
-              src={item.url}
-              alt=""
-              fill
-              sizes="(max-width: 640px) 33vw, 16vw"
-              className="object-cover"
-              unoptimized
-            />
-          </figure>
-        ))}
+    <main
+      style={{
+        minHeight: "100dvh",
+        padding: "var(--space-4)",
+        background: "var(--surface-stage)",
+      }}
+    >
+      <div
+        style={{
+          display: "grid",
+          gap: "var(--space-3)",
+          gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+        }}
+      >
+        {items.map((item) => {
+          const fresh = item.id === newest;
+          return (
+            <figure
+              key={item.id}
+              style={{
+                position: "relative",
+                margin: 0,
+                aspectRatio: "9 / 16",
+                overflow: "hidden",
+                background: "var(--sb-ink-2)",
+                // The newest photo is the only one edged in gold and lifted,
+                // so a guest can find theirs from across the room. The house
+                // ink rule is invisible here — the wall's ground is ink.
+                border: `${fresh ? "var(--border-heavy)" : "var(--border-hard)"} solid ${
+                  fresh ? "var(--sb-gold)" : "var(--sb-ink-3)"
+                }`,
+                transform: fresh ? "translate(-3px, -3px)" : undefined,
+                transition: "all var(--dur-slam) var(--ease-snap)",
+              }}
+            >
+              <Image
+                src={item.url}
+                alt=""
+                fill
+                sizes="(max-width: 640px) 50vw, 16vw"
+                style={{ objectFit: "cover" }}
+                unoptimized
+              />
+            </figure>
+          );
+        })}
       </div>
     </main>
   );

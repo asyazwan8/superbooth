@@ -1,10 +1,16 @@
 "use client";
 
-import { BigButton } from "@/components/kiosk/BigButton";
-import { OptionGrid } from "@/components/kiosk/OptionGrid";
-import { StepDots, StepFooter, StepHeader } from "@/components/kiosk/StepChrome";
+import { OptionGrid, StepDots, StepFooter, StepHeader } from "@/components/ds/booth";
+import { Button } from "@/components/ds/core";
 import { STEP_TITLES, type ChoiceKey } from "@/lib/booth/steps";
 import type { BoothOption } from "@/lib/schema";
+
+/** Each choice gets its own header colour, so the three screens are telling apart. */
+const HEADER_TONES = {
+  scene: "purple",
+  pose: "pink",
+  treatment: "ink",
+} as const;
 
 /**
  * One screen serving scene, pose/costume and treatment.
@@ -34,25 +40,45 @@ export function ChoiceStep({
   const { title, subtitle } = STEP_TITLES[choiceKey];
 
   return (
-    <div className="flex h-full flex-col">
-      <StepHeader title={title} subtitle={subtitle} />
-      <div className="flex-1 overflow-y-auto px-6 pb-4">
-        <OptionGrid options={options} selectedId={selectedId} onSelect={onSelect} />
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <StepHeader
+        eyebrow={`Step ${String(dotsCurrent + 1).padStart(2, "0")} / ${String(dotsTotal).padStart(2, "0")}`}
+        title={title}
+        subtitle={subtitle}
+        tone={HEADER_TONES[choiceKey]}
+      />
+
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          padding: "0 var(--booth-gutter) var(--space-4)",
+        }}
+      >
+        <OptionGrid
+          options={options}
+          selectedId={selectedId}
+          onSelect={(option) => {
+            const chosen = options.find((candidate) => candidate.id === option.id);
+            if (chosen) onSelect(chosen);
+          }}
+        />
       </div>
+
       <StepFooter
         onBack={onBack}
         dots={<StepDots total={dotsTotal} current={dotsCurrent} />}
         action={
           selectedId ? (
-            <BigButton
-              className="w-full"
+            <Button
+              full
               onClick={() => {
                 const chosen = options.find((option) => option.id === selectedId);
                 if (chosen) onSelect(chosen);
               }}
             >
               Continue
-            </BigButton>
+            </Button>
           ) : null
         }
       />

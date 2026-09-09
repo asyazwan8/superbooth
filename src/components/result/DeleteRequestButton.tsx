@@ -10,6 +10,13 @@ import { useState } from "react";
  * rather than a dialog: on a phone, a stray tap here should not be destructive,
  * but the flow should still be two seconds long.
  */
+
+const QUIET: React.CSSProperties = {
+  margin: 0,
+  font: "var(--type-body-sm)",
+  color: "var(--text-invert-muted)",
+};
+
 export function DeleteRequestButton({ shortId }: { shortId: string }) {
   const [stage, setStage] = useState<"idle" | "confirm" | "working" | "done" | "error">("idle");
 
@@ -28,32 +35,50 @@ export function DeleteRequestButton({ shortId }: { shortId: string }) {
   };
 
   if (stage === "done") {
-    return (
-      <p className="text-sm text-ink-400">
-        Your photo and details have been deleted. Thank you.
-      </p>
-    );
+    return <p style={QUIET}>Your photo and details have been deleted. Thank you.</p>;
   }
 
   if (stage === "confirm" || stage === "working") {
     return (
-      <div className="space-y-3">
-        <p className="text-sm text-ink-400">
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+        <p style={QUIET}>
           Delete your photo, name and email for good? This cannot be undone.
         </p>
-        <div className="flex justify-center gap-3">
+        <div style={{ display: "flex", justifyContent: "center", gap: "var(--space-3)" }}>
           <button
             type="button"
             onClick={remove}
             disabled={stage === "working"}
-            className="rounded-full bg-danger/15 px-5 py-2.5 text-sm font-semibold text-danger disabled:opacity-50"
+            style={{
+              minHeight: 48,
+              padding: "0 20px",
+              cursor: stage === "working" ? "default" : "pointer",
+              background: "var(--sb-pink)",
+              color: "var(--sb-paper)",
+              border: "var(--border-hard) solid var(--line-hard)",
+              boxShadow: "var(--shadow-slam-press)",
+              font: "var(--type-label)",
+              letterSpacing: "var(--tracking-label)",
+              textTransform: "uppercase",
+              opacity: stage === "working" ? 0.5 : 1,
+            }}
           >
             {stage === "working" ? "Deleting…" : "Yes, delete it"}
           </button>
           <button
             type="button"
             onClick={() => setStage("idle")}
-            className="rounded-full px-5 py-2.5 text-sm text-ink-400"
+            style={{
+              minHeight: 48,
+              padding: "0 20px",
+              cursor: "pointer",
+              background: "transparent",
+              color: "var(--text-invert)",
+              border: "var(--border-hard) solid currentColor",
+              font: "var(--type-label)",
+              letterSpacing: "var(--tracking-label)",
+              textTransform: "uppercase",
+            }}
           >
             Keep it
           </button>
@@ -63,16 +88,28 @@ export function DeleteRequestButton({ shortId }: { shortId: string }) {
   }
 
   return (
-    <div className="space-y-2">
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
       <button
         type="button"
         onClick={() => setStage("confirm")}
-        className="text-sm text-ink-500 underline underline-offset-4"
+        style={{
+          background: "none",
+          border: "none",
+          padding: 0,
+          cursor: "pointer",
+          font: "var(--type-meta)",
+          fontSize: 12,
+          color: "var(--text-invert-muted)",
+          textDecoration: "underline",
+          textUnderlineOffset: 4,
+        }}
       >
         Delete my photo and data
       </button>
       {stage === "error" ? (
-        <p className="text-sm text-danger">That didn&apos;t work. Please try again.</p>
+        <p style={{ ...QUIET, color: "var(--sb-pink)" }}>
+          That didn&apos;t work. Please try again.
+        </p>
       ) : null}
     </div>
   );

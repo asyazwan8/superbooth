@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/admin/LoginForm";
-import { SuperboothLogo } from "@/components/brand/SuperboothLogo";
+import { SuperLogo } from "@/components/ds/booth";
 import { currentAdmin } from "@/lib/auth";
 import { firebaseConfigured } from "@/lib/env";
 
@@ -10,10 +10,21 @@ export default async function LoginPage() {
   if (await currentAdmin()) redirect("/admin");
 
   return (
-    <main className="@container flex min-h-dvh flex-col items-center justify-center gap-10 bg-ink-950 px-6">
-      <div className="w-full max-w-xs">
-        <SuperboothLogo subline="Backend" />
-      </div>
+    <main
+      style={{
+        minHeight: "100dvh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "var(--space-8)",
+        padding: "var(--space-6)",
+        background: "var(--surface-invert)",
+        backgroundImage: "var(--texture-halftone)",
+        backgroundSize: "var(--texture-halftone-size)",
+      }}
+    >
+      <SuperLogo height="120px" subline="Backend" />
       <LoginForm mode={firebaseConfigured() ? "firebase" : "pin"} />
     </main>
   );

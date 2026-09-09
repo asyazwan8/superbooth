@@ -79,19 +79,26 @@ export function useIdleReset({
   }, [enabled, warning, timeoutSec]);
 
   // Phase 2: count down to the reset.
+  //
+  // The remaining seconds are tracked in a local rather than read back out of
+  // the updater: an updater runs during render and must be pure, so calling
+  // onReset from inside one fired the whole session teardown — router.replace
+  // included — mid-render.
   useEffect(() => {
     if (!warning) return;
 
+    let remaining = IDLE_GRACE_SECONDS;
+
     const timer = window.setInterval(() => {
-      setCountdown((remaining) => {
-        if (remaining <= 1) {
-          window.clearInterval(timer);
-          setWarning(false);
-          onResetRef.current();
-          return IDLE_GRACE_SECONDS;
-        }
-        return remaining - 1;
-      });
+      remaining -= 1;
+      if (remaining <= 0) {
+        window.clearInterval(timer);
+        setWarning(false);
+        setCountdown(IDLE_GRACE_SECONDS);
+        onResetRef.current();
+        return;
+      }
+      setCountdown(remaining);
     }, 1000);
 
     return () => window.clearInterval(timer);

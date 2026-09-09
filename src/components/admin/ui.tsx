@@ -1,50 +1,52 @@
 "use client";
 
+import type { CSSProperties } from "react";
+import {
+  Button as DsButton,
+  EmptyState as DsEmptyState,
+  Panel,
+  Toggle as DsToggle,
+  type PanelGround,
+} from "@/components/ds/core";
+
 /**
- * Admin UI primitives.
+ * Admin primitives.
  *
  * The backend shares the booth's palette but not its scale: this is a desk
- * tool used with a mouse, so controls are compact, dense and hover-aware —
- * the opposite of the kiosk's thumb-sized targets.
+ * tool used with a mouse, so controls are 40px rather than 64px, dense, and
+ * hover-aware — hover states exist here and nowhere else in the system.
+ *
+ * These are thin adapters over `components/ds`, kept because the admin's
+ * inputs are uncontrolled-style (`onChange` with an event) while the booth's
+ * are value-first. Wrapping is cheaper than rewriting every call site to a
+ * signature the desk screens don't want.
  */
-
-type ButtonTone = "primary" | "secondary" | "ghost" | "danger";
-
-const TONES: Record<ButtonTone, string> = {
-  primary: "bg-accent text-white hover:brightness-110",
-  secondary: "bg-ink-800 text-ink-100 hover:bg-ink-700",
-  ghost: "text-ink-400 hover:bg-ink-850 hover:text-ink-100",
-  danger: "bg-danger/15 text-danger hover:bg-danger/25",
-};
 
 export function Button({
   tone = "secondary",
-  className = "",
   ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & { tone?: ButtonTone }) {
-  return (
-    <button
-      type="button"
-      {...props}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm
-        font-medium transition disabled:pointer-events-none disabled:opacity-40
-        ${TONES[tone]} ${className}`}
-    />
-  );
+}: React.ComponentProps<typeof DsButton>) {
+  return <DsButton size="desk" lean={false} tone={tone} {...props} />;
 }
 
 export function Card({
-  className = "",
+  ground = "paper",
   children,
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
+}: React.ComponentProps<typeof Panel> & { ground?: PanelGround }) {
   return (
-    <div {...props} className={`rounded-2xl border border-ink-800 bg-ink-900 ${className}`}>
+    <Panel ground={ground} shadow="press" {...props}>
       {children}
-    </div>
+    </Panel>
   );
 }
 
+/**
+ * A labelled control. This is a real `<label>` rather than the design system's
+ * `Field` (which is a div, for content that is not an input): the backend's
+ * fields are inputs, and the implicit association is what gives each one an
+ * accessible name.
+ */
 export function Field({
   label,
   hint,
@@ -55,72 +57,186 @@ export function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block">
-      <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-ink-400">
+    <label style={{ display: "block" }}>
+      <span
+        style={{
+          display: "block",
+          marginBottom: "var(--space-2)",
+          font: "var(--type-label)",
+          letterSpacing: "var(--tracking-label)",
+          textTransform: "uppercase",
+        }}
+      >
         {label}
       </span>
       {children}
-      {hint ? <span className="mt-1.5 block text-xs text-ink-500">{hint}</span> : null}
+      {hint ? (
+        <span
+          style={{
+            display: "block",
+            marginTop: "var(--space-2)",
+            font: "var(--type-meta)",
+            fontSize: 12,
+            color: "var(--text-muted)",
+          }}
+        >
+          {hint}
+        </span>
+      ) : null}
     </label>
   );
 }
 
-const CONTROL =
-  "w-full rounded-lg border border-ink-700 bg-ink-850 px-3 py-2 text-sm text-ink-100 " +
-  "placeholder:text-ink-600 focus:border-accent focus:outline-none";
+/**
+ * One control skin for input, textarea and select, so a row of mixed controls
+ * lines up. Square, hard-bordered, on the panel ground.
+ */
+const CONTROL: CSSProperties = {
+  width: "100%",
+  minHeight: "var(--tap-min-desk)",
+  padding: "8px var(--space-3)",
+  background: "var(--surface-panel)",
+  color: "var(--text-strong)",
+  border: "var(--border-hard) solid var(--line-hard)",
+  borderRadius: "var(--radius-sm)",
+  font: "var(--type-body-sm)",
+  fontFamily: "var(--font-ui)",
+};
 
-export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={`${CONTROL} ${props.className ?? ""}`} />;
+export function Input({ style, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
+  return <input {...props} style={{ ...CONTROL, ...style }} />;
 }
 
-export function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+export function Textarea({
+  style,
+  ...props
+}: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <textarea
       {...props}
-      className={`${CONTROL} min-h-24 resize-y leading-relaxed ${props.className ?? ""}`}
+      style={{ ...CONTROL, minHeight: 96, resize: "vertical", lineHeight: 1.5, ...style }}
     />
   );
 }
 
-export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} className={`${CONTROL} ${props.className ?? ""}`} />;
+export function Select({ style, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return <select {...props} style={{ ...CONTROL, cursor: "pointer", ...style }} />;
 }
 
-export function Toggle({
-  checked,
-  onChange,
-  label,
-}: {
-  checked: boolean;
-  onChange: (value: boolean) => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className="flex items-center gap-3 text-sm text-ink-200"
-    >
-      <span
-        className={`relative h-6 w-11 rounded-full transition ${checked ? "bg-accent" : "bg-ink-700"}`}
-      >
-        <span
-          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all
-            ${checked ? "left-[1.375rem]" : "left-0.5"}`}
-        />
-      </span>
-      {label}
-    </button>
-  );
+export function Toggle(props: React.ComponentProps<typeof DsToggle>) {
+  return <DsToggle {...props} />;
 }
 
 export function EmptyState({ title, body }: { title: string; body: string }) {
+  return <DsEmptyState title={title} body={body} />;
+}
+
+/**
+ * A section heading. Display type on a gold rule, which is the one place the
+ * backend borrows the booth's loudness — an operator scanning a long editor
+ * needs the structure to be findable at a glance.
+ */
+export function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-dashed border-ink-700 px-6 py-12 text-center">
-      <p className="font-display text-base font-semibold text-ink-200">{title}</p>
-      <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-500">{body}</p>
-    </div>
+    <h2
+      style={{
+        margin: 0,
+        paddingBottom: "var(--space-2)",
+        borderBottom: "var(--border-hard) solid var(--sb-gold)",
+        fontFamily: "var(--font-display)",
+        fontSize: 20,
+        lineHeight: 1,
+        textTransform: "uppercase",
+        // currentColor, not a fixed ink: this heading sits on a paper panel in
+        // the editors and on the ink shell in the option lists.
+        color: "currentColor",
+      }}
+    >
+      {children}
+    </h2>
+  );
+}
+
+/**
+ * The title block every backend screen opens with: display-cased heading, one
+ * line of orientation, and an optional action pinned right.
+ */
+export function PageHeader({
+  title,
+  subtitle,
+  action,
+}: {
+  title: string;
+  subtitle?: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <header
+      style={{
+        display: "flex",
+        alignItems: "flex-end",
+        flexWrap: "wrap",
+        gap: "var(--space-4)",
+        marginBottom: "var(--space-6)",
+      }}
+    >
+      <div style={{ minWidth: 0 }}>
+        <h1
+          style={{
+            margin: 0,
+            display: "inline-block",
+            padding: "6px 18px 8px",
+            background: "var(--sb-gold)",
+            color: "var(--sb-ink)",
+            border: "var(--border-hard) solid var(--line-hard)",
+            boxShadow: "var(--shadow-slam)",
+            transform: "skewX(var(--skew-brand))",
+            fontFamily: "var(--font-display)",
+            fontSize: 30,
+            lineHeight: 1,
+            textTransform: "uppercase",
+            fontWeight: 400,
+          }}
+        >
+          <span style={{ display: "block", transform: "skewX(var(--skew-brand-counter))" }}>
+            {title}
+          </span>
+        </h1>
+        {subtitle ? (
+          <p
+            style={{
+              margin: "var(--space-4) 0 0",
+              font: "var(--type-body-sm)",
+              color: "var(--text-invert-muted)",
+            }}
+          >
+            {subtitle}
+          </p>
+        ) : null}
+      </div>
+      {action ? <div style={{ marginLeft: "auto" }}>{action}</div> : null}
+    </header>
+  );
+}
+
+/**
+ * An operation that failed. Solid pink rather than tinted text — a failed
+ * activation an operator scrolls past is the whole problem this prevents.
+ */
+export function ErrorNote({ children }: { children: React.ReactNode }) {
+  return (
+    <p
+      role="alert"
+      style={{
+        margin: 0,
+        padding: "10px 14px",
+        background: "var(--sb-pink)",
+        color: "var(--sb-paper)",
+        border: "var(--border-hard) solid var(--line-hard)",
+        font: "var(--type-body-sm)",
+      }}
+    >
+      {children}
+    </p>
   );
 }

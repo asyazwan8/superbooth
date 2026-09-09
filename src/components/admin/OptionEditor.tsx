@@ -2,7 +2,16 @@
 
 import { useState } from "react";
 import { ImageUploadField } from "@/components/admin/ImageUploadField";
-import { Button, Card, Field, Input, Select, Textarea, Toggle } from "@/components/admin/ui";
+import {
+  Button,
+  Card,
+  Field,
+  Input,
+  SectionTitle,
+  Select,
+  Textarea,
+  Toggle,
+} from "@/components/admin/ui";
 import { newOptionId } from "@/lib/ids";
 import { MAX_OPTIONS, type BoothOption, type StepConfig } from "@/lib/schema";
 
@@ -64,18 +73,41 @@ export function OptionEditor({
   };
 
   return (
-    <section className="space-y-4">
-      <header className="flex items-end justify-between gap-4">
+    <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+      <header
+        style={{
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          gap: "var(--space-4)",
+        }}
+      >
         <div>
-          <h2 className="font-display text-lg font-semibold text-ink-100">{title}</h2>
-          <p className="mt-0.5 text-sm text-ink-400">{description}</p>
+          <SectionTitle>{title}</SectionTitle>
+          <p
+            style={{
+              margin: "var(--space-2) 0 0",
+              font: "var(--type-body-sm)",
+              color: "var(--text-invert-muted)",
+            }}
+          >
+            {description}
+          </p>
         </div>
-        <span className="shrink-0 text-xs text-ink-500">
+        <span
+          style={{
+            flexShrink: 0,
+            font: "var(--type-label)",
+            letterSpacing: "var(--tracking-label)",
+            textTransform: "uppercase",
+            color: "var(--text-invert-muted)",
+          }}
+        >
           {options.length} of {MAX_OPTIONS}
         </span>
       </header>
 
-      <Card className="space-y-3 p-4">
+      <Card style={{ padding: "var(--space-4)" }}>
         <Field
           label="How the guest chooses"
           hint={
@@ -84,13 +116,14 @@ export function OptionEditor({
               : "The guest picks from the enabled options below. With only one enabled, the step is skipped automatically."
           }
         >
-          <div className="flex gap-2">
+          <div style={{ display: "flex", gap: "var(--space-2)" }}>
             <Select
+              aria-label="How the guest chooses"
               value={config.mode}
               onChange={(event) =>
                 onConfigChange({ ...config, mode: event.target.value as StepConfig["mode"] })
               }
-              className="flex-1"
+              style={{ flex: 1 }}
             >
               <option value="select">Guest selects</option>
               <option value="fixed">Fixed by me</option>
@@ -98,9 +131,10 @@ export function OptionEditor({
 
             {config.mode === "fixed" ? (
               <Select
+                aria-label="Fixed option"
                 value={config.fixedId ?? ""}
                 onChange={(event) => onConfigChange({ ...config, fixedId: event.target.value })}
-                className="flex-1"
+                style={{ flex: 1 }}
               >
                 <option value="">First enabled option</option>
                 {options.map((option) => (
@@ -114,42 +148,73 @@ export function OptionEditor({
         </Field>
       </Card>
 
-      <div className="space-y-2">
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
         {options.map((option, index) => {
           const open = expanded === option.id;
           return (
-            <Card key={option.id} className="overflow-hidden">
-              <div className="flex items-center gap-3 p-3">
-                <div className="flex flex-col">
-                  <button
-                    type="button"
-                    aria-label="Move up"
+            <Card key={option.id} style={{ overflow: "hidden" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "var(--space-3)",
+                  padding: "var(--space-3)",
+                }}
+              >
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <ReorderButton
+                    label="Move up"
+                    glyph="▲"
                     onClick={() => move(index, -1)}
                     disabled={index === 0}
-                    className="px-1 text-xs text-ink-500 hover:text-ink-100 disabled:opacity-25"
-                  >
-                    ▲
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Move down"
+                  />
+                  <ReorderButton
+                    label="Move down"
+                    glyph="▼"
                     onClick={() => move(index, 1)}
                     disabled={index === options.length - 1}
-                    className="px-1 text-xs text-ink-500 hover:text-ink-100 disabled:opacity-25"
-                  >
-                    ▼
-                  </button>
+                  />
                 </div>
 
                 <button
                   type="button"
                   onClick={() => setExpanded(open ? null : option.id)}
-                  className="min-w-0 flex-1 text-left"
+                  style={{
+                    minWidth: 0,
+                    flex: 1,
+                    textAlign: "left",
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    cursor: "pointer",
+                    color: "inherit",
+                  }}
                 >
-                  <span className="block truncate text-sm font-medium text-ink-100">
+                  <span
+                    style={{
+                      display: "block",
+                      fontFamily: "var(--font-display)",
+                      fontSize: 17,
+                      lineHeight: 1.1,
+                      textTransform: "uppercase",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     {option.label || "Untitled"}
                   </span>
-                  <span className="block truncate text-xs text-ink-500">
+                  <span
+                    style={{
+                      display: "block",
+                      font: "var(--type-meta)",
+                      fontSize: 12,
+                      color: "var(--text-muted)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     {option.prompt || "No prompt yet"}
                   </span>
                 </button>
@@ -158,6 +223,7 @@ export function OptionEditor({
                   checked={option.enabled}
                   onChange={(enabled) => update(option.id, { enabled })}
                   label=""
+                  srLabel={`Show "${option.label || "Untitled"}" in the booth`}
                 />
 
                 <Button
@@ -169,8 +235,17 @@ export function OptionEditor({
               </div>
 
               {open ? (
-                <div className="grid gap-4 border-t border-ink-800 p-4 sm:grid-cols-[200px_1fr]">
-                  <div className="space-y-2">
+                <div
+                  className="sb-split"
+                  style={{
+                    display: "grid",
+                    gap: "var(--space-4)",
+                    gridTemplateColumns: "200px minmax(0, 1fr)",
+                    borderTop: "var(--border-hair) solid var(--line-soft)",
+                    padding: "var(--space-4)",
+                  }}
+                >
+                  <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
                     <ImageUploadField
                       value={option.imageUrl}
                       kind="reference"
@@ -192,7 +267,7 @@ export function OptionEditor({
                     ) : null}
                   </div>
 
-                  <div className="space-y-3">
+                  <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
                     <Field label="Label" hint="What the guest sees on the button.">
                       <Input
                         value={option.label}
@@ -256,15 +331,50 @@ function GenerateSceneButton({
   };
 
   return (
-    <div className="space-y-1">
-      <Button
-        onClick={generate}
-        disabled={busy || description.trim().length < 3}
-        className="w-full"
-      >
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+      <Button onClick={generate} disabled={busy || description.trim().length < 3} full>
         {busy ? "Generating…" : "Generate from prompt"}
       </Button>
-      {error ? <p className="text-xs text-danger">{error}</p> : null}
+      {error ? (
+        <p style={{ margin: 0, font: "var(--type-meta)", fontSize: 12, color: "var(--state-danger)" }}>
+          {error}
+        </p>
+      ) : null}
     </div>
+  );
+}
+
+/** The up/down pair on an option row. Small, square, unlabelled by design. */
+function ReorderButton({
+  label,
+  glyph,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  glyph: string;
+  onClick: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      disabled={disabled}
+      className="sb-hover"
+      style={{
+        padding: "0 6px",
+        background: "none",
+        border: "none",
+        cursor: disabled ? "default" : "pointer",
+        color: "var(--text-strong)",
+        opacity: disabled ? 0.25 : 0.7,
+        fontSize: 11,
+        lineHeight: 1.4,
+      }}
+    >
+      {glyph}
+    </button>
   );
 }

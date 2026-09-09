@@ -1,0 +1,30 @@
+:root {
+  --font-display: "Anton", "Archivo", Impact, sans-serif;
+  --font-ui: "Archivo", "Helvetica Neue", Helvetica, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, monospace;
+
+  /* Display — Anton, always uppercase, tight, usually skewed. */
+  --type-hero: 700 clamp(3rem, 13cqi, 7.5rem)/0.86 var(--font-display);
+  --type-display: 400 clamp(2.25rem, 9cqi, 4.5rem)/0.9 var(--font-display);
+  --type-title: 400 clamp(1.75rem, 6.5cqi, 3rem)/0.94 var(--font-display);
+  --type-heading: 400 1.5rem/1.02 var(--font-display);
+
+  /* UI — Archivo. */
+  --type-lead: 600 1.375rem/1.35 var(--font-ui);
+  --type-body: 500 1.0625rem/1.5 var(--font-ui);
+  --type-body-sm: 500 0.9375rem/1.45 var(--font-ui);
+  --type-button: 800 1.125rem/1 var(--font-ui);
+
+  /* Meta — Space Mono, uppercase, wide. */
+  --type-label: 700 0.75rem/1 var(--font-mono);
+  --type-meta: 400 0.8125rem/1.4 var(--font-mono);
+
+  --tracking-display: -0.01em;
+  --tracking-label: 0.18em;
+  --tracking-label-wide: 0.34em;
+  --tracking-button: 0.04em;
+
+  /* The brand lean. Every slab, bar and badge shares one angle. */
+  --skew-brand: -7deg;
+  --skew-brand-counter: 7deg;
+}

@@ -1,0 +1,65 @@
+:root {
+  /* ---- Brand primitives, lifted from the Super! logo ------------------- */
+  --sb-purple: #4a0fb8;       /* logo ground */
+  --sb-purple-deep: #2d0778;  /* shadow / pressed purple */
+  --sb-purple-lift: #6a2ff0;  /* hover purple */
+  --sb-green: #17f09a;        /* logo wordmark */
+  --sb-pink: #ff1f72;         /* logo star */
+  --sb-yellow: #f5f04b;       /* logo bang */
+
+  /* ---- Persona-style extended set ------------------------------------- */
+  --sb-gold: #ffd400;         /* the dominant menu ground */
+  --sb-gold-deep: #e0a800;
+  --sb-cyan: #00d5ff;
+  --sb-orange: #ff6a17;
+  --sb-violet: #8a2be2;
+
+  /* ---- Ink & paper ----------------------------------------------------- */
+  --sb-ink: #0d0715;          /* near-black with a purple cast */
+  --sb-ink-2: #1a0f2b;
+  --sb-ink-3: #2c1c42;
+  --sb-smoke: #6b5b80;
+  --sb-paper: #fffbef;        /* warm off-white */
+  --sb-paper-2: #f2ecdd;
+  --sb-paper-3: #ded6c4;
+
+  /* ---- Semantic: surfaces --------------------------------------------- */
+  --surface-stage: var(--sb-ink);       /* the booth's letterboxed ground */
+  --surface-menu: var(--sb-gold);       /* full-bleed menu / selection ground */
+  --surface-panel: var(--sb-paper);     /* cards, sheets, inputs */
+  --surface-panel-sunk: var(--sb-paper-2);
+  --surface-invert: var(--sb-purple);   /* headline blocks, brand slabs */
+  --surface-scrim: color-mix(in srgb, var(--sb-ink) 92%, transparent);
+
+  /* ---- Semantic: text -------------------------------------------------- */
+  --text-strong: var(--sb-ink);         /* on paper or gold */
+  --text-body: #2b2036;
+  --text-muted: #5c4b70;
+  --text-invert: var(--sb-paper);       /* on ink or purple */
+  --text-invert-muted: #b8a8cc;
+  --text-accent: var(--sb-pink);        /* headline-scale only on paper */
+
+  /* ---- Semantic: line & accent ---------------------------------------- */
+  --line-hard: var(--sb-ink);           /* every border is this, 3px */
+  --line-soft: var(--sb-paper-3);
+  --accent: var(--sb-pink);
+  --accent-2: var(--sb-green);
+  --focus-ring: var(--sb-cyan);
+
+  /* ---- Semantic: state ------------------------------------------------- */
+  --state-positive: var(--sb-green);
+  --state-warn: var(--sb-gold);
+  --state-danger: var(--sb-pink);
+  --state-disabled: var(--sb-paper-3);
+
+  /* ---- Halftone / texture --------------------------------------------- */
+  --texture-halftone: radial-gradient(var(--sb-ink) 1.4px, transparent 1.5px);
+  --texture-halftone-size: 8px 8px;
+  --texture-check: repeating-conic-gradient(var(--sb-ink) 0% 25%, transparent 0% 50%);
+  --texture-check-size: 16px 16px;
+  --texture-stripe: repeating-linear-gradient(
+    -60deg,
+    color-mix(in srgb, var(--sb-ink) 12%, transparent) 0 6px,
+    transparent 6px 14px
+  );
+}
