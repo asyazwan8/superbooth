@@ -7,8 +7,16 @@ import { uploadBodySchema } from "@/lib/schema";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
-/** Guard against a malformed client sending a huge payload. */
-const MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
+/**
+ * Guard against a malformed client sending a huge payload.
+ *
+ * Deliberately below the 4.5 MB request body a serverless platform will
+ * accept: a body over that never reaches this handler at all, so the guest
+ * gets a dropped connection instead of a sentence explaining what happened.
+ * Base64 inflates the image by a third, so this is roughly a 2.2 MB photo —
+ * far above anything `captureFrame` produces, and still a real guard.
+ */
+const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
 
 /**
  * The reference photo the model works from. Bigger is not better here — a

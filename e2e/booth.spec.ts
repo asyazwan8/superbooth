@@ -129,6 +129,34 @@ test("back returns through the choice steps without losing the selection", async
   );
 });
 
+test("a dropped connection never shows the guest a browser error", async ({ page }) => {
+  await page.goto("/booth");
+  await fillDetails(page);
+  await walkTheme(page, "80s", 3);
+
+  await page.getByRole("button", { name: "Take photo" }).click();
+  await expect(page.getByRole("button", { name: "Use this photo" })).toBeVisible({
+    timeout: 30_000,
+  });
+
+  // What a phone on a weak signal does: the request never completes, and the
+  // browser throws with its own wording — "Load failed" in Safari, "Failed to
+  // fetch" in Chrome. Neither is something a guest should ever read.
+  await page.route("**/api/booth/upload", (route) => route.abort("connectionfailed"));
+  await page.getByRole("button", { name: "Use this photo" }).click();
+
+  await expect(page.getByRole("heading", { name: /that didn't work/i })).toBeVisible({
+    timeout: 20_000,
+  });
+  await expect(page.getByText(/could not be sent/i)).toBeVisible();
+
+  const body = await page.locator("body").innerText();
+  expect(body).not.toMatch(/load failed|failed to fetch|networkerror/i);
+
+  // And the guest is not stranded: both ways forward are still offered.
+  await expect(page.getByRole("button", { name: "Start over" })).toBeVisible();
+});
+
 test("the attendant PIN is verified on the server", async ({ page }) => {
   await page.goto("/booth");
 

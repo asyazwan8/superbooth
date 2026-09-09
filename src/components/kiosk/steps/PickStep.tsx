@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { FittedPhoto } from "@/components/kiosk/FittedPhoto";
 import { StepHeader } from "@/components/ds/booth";
 import { Button } from "@/components/ds/core";
 
@@ -35,33 +36,12 @@ export function PickStep({
         tone="purple"
       />
 
-      <div
-        style={{
-          position: "relative",
-          flex: 1,
-          // Without this the photo refuses to shrink below its content and
-          // pushes the footer off a short stage — an operator's laptop, or a
-          // kiosk in a browser with chrome.
-          minHeight: 0,
-          overflow: "hidden",
-          margin: "0 var(--booth-gutter)",
-          // Paper, not the house ink rule: these three screens sit on the ink
-          // stage, where a black edge round a dark photo is no edge at all.
-          border: "var(--border-heavy) solid var(--sb-paper)",
-          background: "var(--sb-ink-2)",
-        }}
-      >
-        <Image
-          key={images[selected]}
-          src={images[selected]}
-          alt={`Option ${selected + 1}`}
-          fill
-          sizes="100vw"
-          style={{ objectFit: "cover" }}
-          unoptimized
-          priority
-        />
-      </div>
+      <FittedPhoto
+        src={images[selected]}
+        alt={`Option ${selected + 1}`}
+        priority
+        areaStyle={{ margin: "0 var(--booth-gutter)" }}
+      />
 
       <div
         style={{
