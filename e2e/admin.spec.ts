@@ -48,6 +48,8 @@ test("an operator duplicates an event, edits it, and takes it live", async ({ pa
   await page.waitForURL(/\/admin\/presets\//);
   await expect(page.getByText(/draft — not live/i)).toBeVisible();
 
+  const createdId = page.url().split("/admin/presets/")[1];
+
   // Rename it and change the headline the booth shows.
   await page.getByLabel("Event name").fill("KL Launch Night");
   await page.getByLabel(/idle headline/i).fill("Be the poster");
@@ -88,9 +90,13 @@ test("an operator duplicates an event, edits it, and takes it live", async ({ pa
   expect(preset.branding.attractHeadline).toBe("Be the poster");
   expect(preset.flow.treatment.mode).toBe("fixed");
 
+  // Put the booth back on its original event, then remove the one this test
+  // made. Rows are addressed by name, so a leftover "KL Launch Night" makes
+  // the next run's filter match two of them.
   if (previouslyLive) {
     await page.request.post(`/api/admin/presets/${previouslyLive.id}/activate`);
   }
+  await page.request.delete(`/api/admin/presets/${createdId}`);
 });
 
 test("the live event cannot be deleted out from under the booth", async ({ page }) => {
@@ -189,6 +195,8 @@ test("a test generation honours the style the operator explicitly picked", async
 
   expect(prompt).toContain("hand-drawn 2D character illustration");
   expect(prompt).not.toContain("3D animated feature-film");
+
+  await page.request.delete(`/api/admin/presets/${target.id}`);
 });
 
 test("the public gallery exposes photos but never personal data", async ({ page }) => {
