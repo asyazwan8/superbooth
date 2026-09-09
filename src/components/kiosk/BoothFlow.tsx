@@ -428,7 +428,13 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
         ) : null;
 
       case "generating":
-        return <GeneratingStep queuePosition={queuePosition} elapsedMs={elapsedMs} />;
+        return (
+          <GeneratingStep
+            queuePosition={queuePosition}
+            elapsedMs={elapsedMs}
+            logoUrl={preset.branding.logoUrl}
+          />
+        );
 
       case "pick":
         return (

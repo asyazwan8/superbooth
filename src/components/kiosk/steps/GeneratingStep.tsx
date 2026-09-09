@@ -23,9 +23,12 @@ const MESSAGES = [
 export function GeneratingStep({
   queuePosition,
   elapsedMs,
+  logoUrl,
 }: {
   queuePosition: number | null;
   elapsedMs: number;
+  /** The event's own lockup, when the operator uploaded one. */
+  logoUrl?: string | null;
 }) {
   const [messageIndex, setMessageIndex] = useState(0);
 
@@ -74,7 +77,11 @@ export function GeneratingStep({
         }}
       />
 
-      <SuperLogo height="30cqi" style={{ position: "relative", flexShrink: 0 }} />
+      <SuperLogo
+        src={logoUrl || undefined}
+        height="30cqi"
+        style={{ position: "relative", flexShrink: 0 }}
+      />
 
       <div
         style={{
