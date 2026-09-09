@@ -112,7 +112,7 @@ export function SessionsTable({
       key: "choices",
       label: "Choices",
       render: (session) =>
-        [session.labels.scene, session.labels.pose, session.labels.treatment]
+        [session.labels.theme, ...Object.values(session.labels.customisations)]
           .filter(Boolean)
           .join(" · ") || "—",
     },

@@ -2,18 +2,11 @@
 
 import { OptionGrid, StepDots, StepFooter, StepHeader } from "@/components/ds/booth";
 import { Button } from "@/components/ds/core";
-import { STEP_TITLES, type ChoiceKey } from "@/lib/booth/steps";
 import type { BoothOption } from "@/lib/schema";
-
-/** Each choice gets its own header colour, so the three screens are telling apart. */
-const HEADER_TONES = {
-  scene: "purple",
-  pose: "pink",
-  treatment: "ink",
-} as const;
+import type { HeaderTone } from "@/components/ds/booth";
 
 /**
- * One screen serving scene, pose/costume and treatment.
+ * One screen serving the theme and every customisation it asks about.
  *
  * Tapping an option selects it and advances immediately — on a booth with a
  * queue behind it, a select-then-confirm pattern doubles the taps for no
@@ -21,7 +14,9 @@ const HEADER_TONES = {
  * chosen and wants to move on without re-tapping.
  */
 export function ChoiceStep({
-  choiceKey,
+  title,
+  subtitle,
+  tone,
   options,
   selectedId,
   onSelect,
@@ -29,23 +24,23 @@ export function ChoiceStep({
   dotsTotal,
   dotsCurrent,
 }: {
-  choiceKey: ChoiceKey;
+  title: string;
+  subtitle: string;
+  tone: HeaderTone;
   options: BoothOption[];
   selectedId: string | null;
   onSelect: (option: BoothOption) => void;
-  onBack: () => void;
+  onBack?: () => void;
   dotsTotal: number;
   dotsCurrent: number;
 }) {
-  const { title, subtitle } = STEP_TITLES[choiceKey];
-
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <StepHeader
         eyebrow={`Step ${String(dotsCurrent + 1).padStart(2, "0")} / ${String(dotsTotal).padStart(2, "0")}`}
         title={title}
         subtitle={subtitle}
-        tone={HEADER_TONES[choiceKey]}
+        tone={tone}
       />
 
       <div
@@ -58,9 +53,11 @@ export function ChoiceStep({
         <OptionGrid
           options={options}
           selectedId={selectedId}
-          onSelect={(option) => {
-            const chosen = options.find((candidate) => candidate.id === option.id);
-            if (chosen) onSelect(chosen);
+          onSelect={(chosen) => {
+            // OptionGrid speaks the design system's view type; map back to the
+            // preset's own option so callers get the prompt fragment too.
+            const option = options.find((candidate) => candidate.id === chosen.id);
+            if (option) onSelect(option);
           }}
         />
       </div>

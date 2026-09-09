@@ -2,7 +2,15 @@
 
 import Image from "next/image";
 import { SuperLogo } from "@/components/ds/booth";
-import { optionsFor, stepSequence, type StepId } from "@/lib/booth/steps";
+import {
+  askedCustomisations,
+  customisationIndex,
+  enabledThemes,
+  optionsFor,
+  resolveTheme,
+  stepSequence,
+  type StepId,
+} from "@/lib/booth/steps";
 import type { PublicPreset } from "@/lib/schema";
 
 /**
@@ -16,9 +24,7 @@ import type { PublicPreset } from "@/lib/schema";
 
 const LABELS: Partial<Record<StepId, string>> = {
   details: "Details & consent",
-  scene: "Choose scene",
-  pose: "Choose look",
-  treatment: "Choose style",
+  theme: "Choose theme",
   capture: "Take photo",
   review: "Review & retake",
   generating: "Generating",
@@ -27,7 +33,14 @@ const LABELS: Partial<Record<StepId, string>> = {
 };
 
 export function KioskPreview({ preset }: { preset: PublicPreset }) {
-  const sequence = stepSequence(preset);
+  /*
+   * Previewed against the first theme on offer. The journey's length depends
+   * on which theme a guest picks, so a single list cannot be the whole truth —
+   * this shows the shape of one run rather than claiming to show them all.
+   */
+  const previewTheme = resolveTheme(preset, enabledThemes(preset)[0]?.id ?? null);
+  const asked = askedCustomisations(previewTheme);
+  const sequence = stepSequence(preset, previewTheme?.id ?? null);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
@@ -159,10 +172,14 @@ export function KioskPreview({ preset }: { preset: PublicPreset }) {
           }}
         >
           {sequence.map((step, index) => {
+            const slotIndex = customisationIndex(step);
+            const slot = slotIndex === null ? null : asked[slotIndex];
             const options =
-              step === "scene" || step === "pose" || step === "treatment"
-                ? optionsFor(preset, step).length
-                : null;
+              step === "theme"
+                ? enabledThemes(preset).length
+                : slot
+                  ? optionsFor(slot).length
+                  : null;
             return (
               <li
                 key={step}
@@ -186,7 +203,12 @@ export function KioskPreview({ preset }: { preset: PublicPreset }) {
                 >
                   {index + 1}
                 </span>
-                <span>{LABELS[step] ?? step}</span>
+                <span>
+                  {LABELS[step] ??
+                    (customisationIndex(step) !== null
+                      ? (asked[customisationIndex(step) as number]?.label ?? "Customisation")
+                      : step)}
+                </span>
                 {options !== null ? (
                   <span
                     style={{

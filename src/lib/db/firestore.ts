@@ -3,6 +3,7 @@ import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { firebaseAdminConfig } from "@/lib/env";
 import { presetSchema, sessionSchema, type Preset, type Session } from "@/lib/schema";
+import { upgradePresetShape } from "./migrations";
 import { NotFoundError, type Db, type SessionQuery } from "./types";
 
 /**
@@ -29,7 +30,7 @@ function db(): Firestore {
 }
 
 function parsePreset(data: unknown, id: string): Preset {
-  return presetSchema.parse({ ...(data as object), id });
+  return presetSchema.parse(upgradePresetShape({ ...(data as object), id }));
 }
 
 function parseSession(data: unknown, id: string): Session {

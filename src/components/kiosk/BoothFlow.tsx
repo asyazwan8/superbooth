@@ -20,10 +20,13 @@ import { useIdleReset } from "@/hooks/useIdleReset";
 import { useKioskMode } from "@/hooks/useKioskMode";
 import { readBoothMotion, stepVariants } from "@/lib/booth/motion";
 import {
+  askedCustomisations,
+  customisationIndex,
+  enabledThemes,
   optionsFor,
   progressSteps,
+  resolveTheme,
   stepSequence,
-  type ChoiceKey,
   type StepId,
 } from "@/lib/booth/steps";
 import type { BoothOption, PublicPreset } from "@/lib/schema";
@@ -49,9 +52,7 @@ const RESULT_AUTO_RESET_SEC = 45;
  */
 const GROUNDS: Record<string, StageGround> = {
   details: "menu",
-  scene: "menu",
-  pose: "menu",
-  treatment: "menu",
+  theme: "menu",
   capture: "stage",
   review: "menu",
   generating: "stage",
@@ -59,6 +60,19 @@ const GROUNDS: Record<string, StageGround> = {
   result: "stage",
   error: "purple",
 };
+
+/** Every customisation screen sits on the menu ground, like the theme step. */
+function groundFor(step: StepId, error: boolean): StageGround {
+  if (error) return "purple";
+  if (customisationIndex(step) !== null) return "menu";
+  return GROUNDS[step] ?? "stage";
+}
+
+/**
+ * Each customisation gets its own header colour so a run of them does not read
+ * as the same screen failing to advance.
+ */
+const CUSTOM_TONES = ["pink", "ink", "purple", "paper"] as const;
 
 interface SessionState {
   sessionId: string | null;
@@ -97,9 +111,6 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
   const router = useRouter();
   const { engage } = useKioskMode();
 
-  const sequence = stepSequence(preset);
-  const progress = progressSteps(preset);
-
   const [step, setStepId] = useState<StepId>("details");
   // Which way the journey just moved, so a transition can carry the same
   // meaning the Back button does: forward enters from the right, Back from the
@@ -113,11 +124,17 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
 
   const [fields, setFields] = useState<Record<string, string>>({});
   const [consent, setConsent] = useState(false);
-  const [choices, setChoices] = useState<Record<ChoiceKey, string | null>>({
-    scene: null,
-    pose: null,
-    treatment: null,
-  });
+  const [themeId, setThemeId] = useState<string | null>(null);
+  /** Customisation id to chosen option id, for the current theme only. */
+  const [customisations, setCustomisations] = useState<Record<string, string>>({});
+
+  // Derived after the selection exists, because the journey's shape depends on
+  // it: a theme brings its own questions, so the sequence is not a property of
+  // the preset alone.
+  const sequence = stepSequence(preset, themeId);
+  const progress = progressSteps(preset, themeId);
+  const theme = resolveTheme(preset, themeId);
+  const asked = askedCustomisations(theme);
   const [session, setSession] = useState<SessionState>(EMPTY_SESSION);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -128,7 +145,8 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
     setStep("details", -1);
     setFields({});
     setConsent(false);
-    setChoices({ scene: null, pose: null, treatment: null });
+    setThemeId(null);
+    setCustomisations({});
     setSession(EMPTY_SESSION);
     setBusy(false);
     setError(null);
@@ -184,10 +202,35 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
     }
   }, [advance, consent, engage, fields]);
 
-  const chooseOption = useCallback(
-    (key: ChoiceKey, option: BoothOption) => {
-      setChoices((current) => ({ ...current, [key]: option.id }));
-      advance(key);
+  /**
+   * Choosing a theme resets whatever was picked inside the previous one: the
+   * slots belong to the theme, so a superhero's power has no meaning once the
+   * guest goes back and picks 80s instead.
+   *
+   * The next step is computed from the theme being chosen rather than through
+   * `advance`, which reads the sequence for the theme that was current when
+   * this render began — still the old one, or none at all. Taking it from the
+   * new theme is what puts its own questions into the journey instead of
+   * skipping the guest straight to the shutter.
+   */
+  const chooseTheme = useCallback(
+    (option: BoothOption) => {
+      setThemeId((current) => {
+        if (current !== option.id) setCustomisations({});
+        return option.id;
+      });
+
+      const next = stepSequence(preset, option.id);
+      const following = next[next.indexOf("theme") + 1];
+      if (following) setStep(following);
+    },
+    [preset, setStep],
+  );
+
+  const chooseCustomisation = useCallback(
+    (step: StepId, slotId: string, option: BoothOption) => {
+      setCustomisations((current) => ({ ...current, [slotId]: option.id }));
+      advance(step);
     },
     [advance],
   );
@@ -199,9 +242,8 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
       setQueuePosition(null);
       const { requestId } = await postJson<{ requestId: string }>("/api/booth/generate", {
         sessionId,
-        sceneId: choices.scene,
-        poseId: choices.pose,
-        treatmentId: choices.treatment,
+        themeId,
+        customisations,
       });
       setSession((state) => ({
         ...state,
@@ -210,7 +252,7 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
         attempts: state.attempts + 1,
       }));
     },
-    [choices, setStep],
+    [customisations, setStep, themeId],
   );
 
   const confirmPhoto = useCallback(async () => {
@@ -365,6 +407,27 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
       );
     }
 
+    // Customisation steps are `custom-N` rather than named cases: how many
+    // there are, and what they ask, is a property of the chosen theme.
+    const slotIndex = customisationIndex(step);
+    if (slotIndex !== null) {
+      const slot = asked[slotIndex];
+      if (!slot) return null;
+      return (
+        <ChoiceStep
+          title={slot.title || slot.label}
+          subtitle={slot.subtitle}
+          tone={CUSTOM_TONES[slotIndex % CUSTOM_TONES.length]}
+          options={optionsFor(slot)}
+          selectedId={customisations[slot.id] ?? null}
+          onSelect={(option) => chooseCustomisation(step, slot.id, option)}
+          onBack={goBack}
+          dotsTotal={progress.length}
+          dotsCurrent={dotIndex}
+        />
+      );
+    }
+
     switch (step) {
       case "details":
         return (
@@ -381,16 +444,16 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
           />
         );
 
-      case "scene":
-      case "pose":
-      case "treatment":
+      case "theme":
         return (
           <ChoiceStep
-            choiceKey={step}
-            options={optionsFor(preset, step)}
-            selectedId={choices[step]}
-            onSelect={(option) => chooseOption(step, option)}
-            onBack={goBack}
+            title="Choose your theme"
+            subtitle="Pick a world to step into."
+            tone="purple"
+            options={enabledThemes(preset)}
+            selectedId={themeId}
+            onSelect={chooseTheme}
+            onBack={undefined}
             dotsTotal={progress.length}
             dotsCurrent={dotIndex}
           />
@@ -465,7 +528,7 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
 
   return (
     <KioskFrame
-      ground={GROUNDS[error ? "error" : step] ?? "stage"}
+      ground={groundFor(step, Boolean(error))}
       accent={preset.branding.accent}
       accentSoft={preset.branding.accentSoft}
     >

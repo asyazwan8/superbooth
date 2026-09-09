@@ -61,13 +61,13 @@ test("an operator duplicates an event, edits it, and takes it live", async ({ pa
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(savedBadge).toBeVisible();
 
-  // Pin the style step, which should drop a screen from the guest journey.
+  // Pin the theme step, which should drop a screen from the guest journey.
   const journey = page.getByTestId("guest-journey").getByRole("listitem");
   const journeyBefore = await journey.count();
 
-  await page.getByRole("button", { name: "Styles" }).click();
+  await page.getByRole("button", { name: "Themes" }).click();
   await page.getByLabel(/how the guest chooses/i).selectOption("fixed");
-  await expect(page.getByText(/skips this step entirely/i)).toBeVisible();
+  await expect(page.getByText(/skips the theme step/i)).toBeVisible();
   await expect(journey).toHaveCount(journeyBefore - 1);
 
   await page.getByRole("button", { name: "Save changes" }).click();
@@ -84,11 +84,11 @@ test("an operator duplicates an event, edits it, and takes it live", async ({ pa
 
   const config = await page.request.get("/api/config");
   const { preset } = (await config.json()) as {
-    preset: { name: string; branding: { attractHeadline: string }; flow: { treatment: { mode: string } } };
+    preset: { name: string; branding: { attractHeadline: string }; flow: { theme: { mode: string } } };
   };
   expect(preset.name).toBe("KL Launch Night");
   expect(preset.branding.attractHeadline).toBe("Be the poster");
-  expect(preset.flow.treatment.mode).toBe("fixed");
+  expect(preset.flow.theme.mode).toBe("fixed");
 
   // Put the booth back on its original event, then remove the one this test
   // made. Rows are addressed by name, so a leftover "KL Launch Night" makes
@@ -163,44 +163,43 @@ test("analytics reports a coherent funnel", async ({ page }) => {
   }
 });
 
-test("a test generation honours the style the operator explicitly picked", async ({ page }) => {
+test("a test generation honours the theme the operator explicitly picked", async ({ page }) => {
   await signIn(page);
 
-  // Self-contained: create a preset with the style pinned rather than relying
+  // Self-contained: create a preset with the theme pinned rather than relying
   // on state another test happened to leave behind.
   const created = await page.request.post("/api/admin/presets", {
-    data: { name: "Pinned style fixture" },
+    data: { name: "Pinned theme fixture" },
   });
-  const { preset } = (await created.json()) as { preset: Record<string, unknown> };
+  const { preset } = (await created.json()) as {
+    preset: { id: string; themes: { id: string; label: string }[]; flow: object };
+  };
+
+  const pinned = preset.themes.find((theme) => theme.label === "Cyberpunk")!;
+  const asked = preset.themes.find((theme) => theme.label === "Jungle Ranger")!;
 
   await page.request.put(`/api/admin/presets/${preset.id}`, {
-    data: {
-      ...preset,
-      flow: {
-        ...(preset.flow as object),
-        treatment: { mode: "fixed", fixedId: "treatment-3d" },
-      },
-    },
+    data: { ...preset, flow: { theme: { mode: "fixed", fixedId: pinned.id } } },
   });
 
-  const target = preset as { id: string };
-
-  const scene = await page.request.post("/api/admin/generate-scene", {
+  const backdrop = await page.request.post("/api/admin/generate-scene", {
     data: { description: "a misty pine forest at dawn" },
   });
-  const { url } = (await scene.json()) as { url: string };
+  const { url } = (await backdrop.json()) as { url: string };
 
-  // The preset pins 3D, but the operator asked for 2D — the explicit choice
-  // must win, or the test tool silently tests the wrong thing.
+  // The preset pins Cyberpunk, but the operator asked for Jungle Ranger — the
+  // explicit choice must win, or the test tool silently tests the wrong thing.
   const response = await page.request.post("/api/admin/test-generate", {
-    data: { presetId: target.id, photoUrl: url, treatmentId: "treatment-2d" },
+    data: { presetId: preset.id, photoUrl: url, themeId: asked.id },
   });
   const { prompt } = (await response.json()) as { prompt: string };
 
-  expect(prompt).toContain("hand-drawn 2D character illustration");
-  expect(prompt).not.toContain("3D animated feature-film");
+  expect(prompt).toContain("Deep rainforest");
+  expect(prompt).not.toContain("high-tech back alley");
+  // Full length, whatever the theme: the guest picked an outfit and shoes.
+  expect(prompt).toContain("head to toe");
 
-  await page.request.delete(`/api/admin/presets/${target.id}`);
+  await page.request.delete(`/api/admin/presets/${preset.id}`);
 });
 
 test("the public gallery exposes photos but never personal data", async ({ page }) => {

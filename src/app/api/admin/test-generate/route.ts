@@ -1,6 +1,6 @@
 import { badRequest, handle, ok, readJson } from "@/lib/api";
 import { requireAdmin } from "@/lib/auth";
-import { resolveOption } from "@/lib/booth/steps";
+import { resolveAllCustomisations, resolveTheme } from "@/lib/booth/steps";
 import { getDb, sanitisePreset } from "@/lib/db";
 import { buildPrompt, estimateCostUsd } from "@/lib/fal/prompt";
 import { getProvider } from "@/lib/fal/provider";
@@ -24,9 +24,8 @@ export async function POST(request: Request) {
     const body = (await readJson(request)) as {
       presetId?: unknown;
       photoUrl?: unknown;
-      sceneId?: unknown;
-      poseId?: unknown;
-      treatmentId?: unknown;
+      themeId?: unknown;
+      customisations?: unknown;
     };
 
     if (typeof body.presetId !== "string") throw badRequest("A preset is required.");
@@ -39,30 +38,25 @@ export async function POST(request: Request) {
     const publicPreset = sanitisePreset(preset);
 
     /*
-     * An explicitly named option always wins here, even when the operator has
-     * pinned that step to "fixed". The point of this tool is to try a specific
-     * combination — `resolveOption` alone would silently hand back the pinned
-     * option and quietly test something other than what was asked for.
+     * An explicitly named theme always wins here, even when the operator has
+     * pinned the step to "fixed". The point of this tool is to try a specific
+     * combination — `resolveTheme` alone would silently hand back the pinned
+     * theme and quietly test something other than what was asked for.
      */
-    const pick = (key: "scene" | "pose" | "treatment", value: unknown) => {
-      const options = key === "scene" ? publicPreset.scenes
-        : key === "pose" ? publicPreset.poses
-        : publicPreset.treatments;
+    const named =
+      typeof body.themeId === "string" && body.themeId
+        ? publicPreset.themes.find((theme) => theme.id === body.themeId)
+        : undefined;
+    const theme = named ?? resolveTheme(publicPreset, null) ?? publicPreset.themes[0] ?? null;
 
-      if (typeof value === "string" && value) {
-        const explicit = options.find((option) => option.id === value);
-        if (explicit) return explicit;
-      }
-      return resolveOption(publicPreset, key, null);
-    };
+    const selected =
+      typeof body.customisations === "object" && body.customisations !== null
+        ? (body.customisations as Record<string, string>)
+        : {};
 
     const { prompt, imageUrls } = buildPrompt(
       publicPreset,
-      {
-        scene: pick("scene", body.sceneId),
-        pose: pick("pose", body.poseId),
-        treatment: pick("treatment", body.treatmentId),
-      },
+      { theme, customisations: resolveAllCustomisations(theme, selected) },
       body.photoUrl,
     );
 

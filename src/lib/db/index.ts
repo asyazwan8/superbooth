@@ -1,7 +1,6 @@
 import "server-only";
 import { firebaseConfigured } from "@/lib/env";
 import { presetSchema, type Preset, type PublicPreset } from "@/lib/schema";
-import { hasSupersededCatalogue, withShippedCatalogue } from "./migrations";
 import { defaultPreset } from "./seed";
 import type { Db } from "./types";
 
@@ -30,23 +29,14 @@ export function resetDbCache(): void {
  * been configured still runs. A booth that shows an error because nobody
  * pressed "activate" is a worse failure than one showing sensible defaults.
  *
- * A live preset still carrying an unedited demo catalogue is brought up to the
- * shipped one on the way past. That only fires while the catalogue is exactly
- * as it shipped — see ./migrations — so it reaches a booth nobody has
- * configured and never touches an operator's own options. The write is
- * idempotent and stops matching once applied, so it happens once rather than
- * on every read.
+ * A preset stored in an older shape is upgraded inside the driver, on the way
+ * out of the store — see ./migrations — so everything here, and every other
+ * reader, only ever sees the current shape.
  */
 export async function getActivePresetOrDefault(): Promise<Preset> {
   const db = await getDb();
   const active = await db.getActivePreset();
-
-  if (active) {
-    if (!hasSupersededCatalogue(active)) return active;
-    const refreshed = withShippedCatalogue(active);
-    await db.savePreset(refreshed);
-    return refreshed;
-  }
+  if (active) return active;
 
   const seeded = defaultPreset();
   await db.savePreset(seeded);
@@ -70,9 +60,19 @@ export function sanitisePreset(preset: Preset): PublicPreset {
     flow: parsed.flow,
     generation: parsed.generation,
     form: { ...parsed.form, fields: parsed.form.fields.filter((field) => field.enabled) },
-    scenes: parsed.scenes.filter((option) => option.enabled),
-    poses: parsed.poses.filter((option) => option.enabled),
-    treatments: parsed.treatments.filter((option) => option.enabled),
+    // Disabled themes, slots and options are filtered here rather than in the
+    // kiosk so a guest with devtools cannot see what the operator turned off.
+    themes: parsed.themes
+      .filter((theme) => theme.enabled)
+      .map((theme) => ({
+        ...theme,
+        customisations: theme.customisations
+          .filter((slot) => slot.enabled)
+          .map((slot) => ({
+            ...slot,
+            options: slot.options.filter((option) => option.enabled),
+          })),
+      })),
   };
 }
 

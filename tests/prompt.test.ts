@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildPrompt, buildScenePrompt, estimateCostUsd } from "@/lib/fal/prompt";
 import { defaultPreset } from "@/lib/db/seed";
-import type { BoothOption, PublicPreset } from "@/lib/schema";
+import type { BoothOption, Customisation, PublicPreset, Theme } from "@/lib/schema";
 
 const PHOTO = "https://storage.example.com/guest.jpg";
 
@@ -14,9 +14,7 @@ function preset(): PublicPreset {
     flow: full.flow,
     generation: full.generation,
     form: full.form,
-    scenes: full.scenes,
-    poses: full.poses,
-    treatments: full.treatments,
+    themes: full.themes,
   };
 }
 
@@ -32,14 +30,24 @@ function option(overrides: Partial<BoothOption> = {}): BoothOption {
   };
 }
 
+function theme(overrides: Partial<Theme> = {}): Theme {
+  return { ...option({ id: "theme" }), customisations: [], ...overrides };
+}
+
+function slot(label: string, chosen: BoothOption): { slot: Customisation; option: BoothOption } {
+  return {
+    slot: { id: `slot-${label}`, label, title: "", subtitle: "", options: [chosen], enabled: true },
+    option: chosen,
+  };
+}
+
 describe("buildPrompt", () => {
   it("always puts the guest photo first, since the identity lock names it", () => {
     const built = buildPrompt(
       preset(),
       {
-        scene: option({ id: "s", imageUrl: "https://example.com/scene.jpg" }),
-        pose: option({ id: "p", imageUrl: "https://example.com/pose.jpg" }),
-        treatment: option({ id: "t", prompt: "cinematic" }),
+        theme: theme({ imageUrl: "https://example.com/theme.jpg" }),
+        customisations: [slot("Outfit", option({ id: "o", prompt: "a tuxedo" }))],
       },
       PHOTO,
     );
@@ -49,20 +57,21 @@ describe("buildPrompt", () => {
   });
 
   it("refers to each reference by the position it actually occupies", () => {
-    // With no scene image, the pose reference becomes the *second* image —
+    // With no theme image, the outfit reference becomes the *second* image —
     // if the prompt still called it the third, the model would bind the
-    // wardrobe instruction to an image that isn't there.
+    // instruction to an image that isn't there.
     const built = buildPrompt(
       preset(),
       {
-        scene: option({ id: "s", prompt: "a rooftop", imageUrl: null }),
-        pose: option({ id: "p", prompt: "a tuxedo", imageUrl: "https://example.com/pose.jpg" }),
-        treatment: null,
+        theme: theme({ prompt: "a rooftop", imageUrl: null }),
+        customisations: [
+          slot("Outfit", option({ id: "o", prompt: "a tuxedo", imageUrl: "https://example.com/outfit.jpg" })),
+        ],
       },
       PHOTO,
     );
 
-    expect(built.imageUrls).toEqual([PHOTO, "https://example.com/pose.jpg"]);
+    expect(built.imageUrls).toEqual([PHOTO, "https://example.com/outfit.jpg"]);
     expect(built.prompt).toContain("second reference image");
     expect(built.prompt).not.toContain("third reference image");
   });
@@ -71,9 +80,8 @@ describe("buildPrompt", () => {
     const built = buildPrompt(
       preset(),
       {
-        scene: option({ id: "s", imageUrl: "https://example.com/scene.jpg", useAsReference: false }),
-        pose: null,
-        treatment: null,
+        theme: theme({ imageUrl: "https://example.com/theme.jpg", useAsReference: false }),
+        customisations: [],
       },
       PHOTO,
     );
@@ -81,21 +89,53 @@ describe("buildPrompt", () => {
     expect(built.imageUrls).toEqual([PHOTO]);
   });
 
-  it("tells the model to take the outfit but not the face from the pose reference", () => {
+  it("names each customisation with the operator's own label", () => {
+    // The label is what binds a fragment to the right thing: "ACCESSORY — a
+    // sheathed machete" reads far more reliably than the fragment alone.
     const built = buildPrompt(
       preset(),
-      { scene: null, pose: option({ imageUrl: "https://example.com/pose.jpg" }), treatment: null },
+      {
+        theme: theme(),
+        customisations: [
+          slot("Accessory", option({ id: "a", prompt: "a sheathed machete on the hip" })),
+          slot("Superpower", option({ id: "p", prompt: "flame wreathing the hands" })),
+        ],
+      },
       PHOTO,
     );
 
-    expect(built.prompt).toContain("Do not copy the face");
+    expect(built.prompt).toContain("ACCESSORY — a sheathed machete on the hip");
+    expect(built.prompt).toContain("SUPERPOWER — flame wreathing the hands");
+  });
+
+  it("tells the model not to take the face from any other reference", () => {
+    const built = buildPrompt(
+      preset(),
+      {
+        theme: theme({ imageUrl: "https://example.com/theme.jpg" }),
+        customisations: [],
+      },
+      PHOTO,
+    );
+
+    expect(built.prompt).toContain("Do not copy any face");
+  });
+
+  it("asks for the whole figure, since the guest chose an outfit and shoes", () => {
+    const built = buildPrompt(preset(), { theme: theme(), customisations: [] }, PHOTO);
+
+    expect(built.prompt).toContain("full-body");
+    expect(built.prompt).toContain("head to toe");
+    // The captured photo is framed far tighter than the output, so the model
+    // is told to complete the figure rather than to reproduce one.
+    expect(built.prompt).toContain("extend and complete the");
   });
 
   it("appends the event's house style when one is set", () => {
     const base = preset();
     const built = buildPrompt(
       { generation: { ...base.generation, styleSuffix: "Warm golden grade." } },
-      { scene: null, pose: null, treatment: null },
+      { theme: null, customisations: [] },
       PHOTO,
     );
 
@@ -103,7 +143,7 @@ describe("buildPrompt", () => {
   });
 
   it("guards against added text and extra people", () => {
-    const built = buildPrompt(preset(), { scene: null, pose: null, treatment: null }, PHOTO);
+    const built = buildPrompt(preset(), { theme: null, customisations: [] }, PHOTO);
     expect(built.prompt).toContain("watermarks");
     expect(built.prompt).toContain("A single subject only");
   });
@@ -112,9 +152,13 @@ describe("buildPrompt", () => {
     const built = buildPrompt(
       preset(),
       {
-        scene: option({ imageUrl: "https://example.com/a.jpg" }),
-        pose: option({ imageUrl: "https://example.com/b.jpg" }),
-        treatment: option({ imageUrl: "https://example.com/c.jpg" }),
+        theme: theme({ imageUrl: "https://example.com/a.jpg" }),
+        customisations: [
+          slot("One", option({ id: "1", imageUrl: "https://example.com/b.jpg" })),
+          slot("Two", option({ id: "2", imageUrl: "https://example.com/c.jpg" })),
+          slot("Three", option({ id: "3", imageUrl: "https://example.com/d.jpg" })),
+          slot("Four", option({ id: "4", imageUrl: "https://example.com/e.jpg" })),
+        ],
       },
       PHOTO,
     );

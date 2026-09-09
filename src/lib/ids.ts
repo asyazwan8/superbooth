@@ -17,4 +17,8 @@ export const newSessionId = (): string => nanoid(16);
 
 export const newOptionId = (prefix: string): string => `${prefix}-${nanoid(8)}`;
 
+export const newThemeId = (): string => newOptionId("theme");
+
+export const newCustomisationId = (): string => newOptionId("custom");
+
 export const newPresetId = (): string => `preset-${nanoid(10)}`;

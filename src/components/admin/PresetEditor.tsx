@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { ImageUploadField } from "@/components/admin/ImageUploadField";
 import { KioskPreview } from "@/components/admin/KioskPreview";
-import { OptionEditor } from "@/components/admin/OptionEditor";
+import { ThemeEditor } from "@/components/admin/ThemeEditor";
 import { TestGenerate } from "@/components/admin/TestGenerate";
 import {
   Button,
@@ -31,7 +31,7 @@ import type { FormField, Preset, PublicPreset } from "@/lib/schema";
  * commits them, and the unsaved-changes state is always visible.
  */
 
-const TABS = ["Branding", "Guest form", "Scenes", "Looks", "Styles", "Generation"] as const;
+const TABS = ["Branding", "Guest form", "Themes", "Generation"] as const;
 type Tab = (typeof TABS)[number];
 
 export function PresetEditor({ initial }: { initial: Preset }) {
@@ -81,9 +81,14 @@ export function PresetEditor({ initial }: { initial: Preset }) {
   // mirrors what sanitisePreset does on the server.
   const previewPreset: PublicPreset = {
     ...preset,
-    scenes: preset.scenes.filter((option) => option.enabled),
-    poses: preset.poses.filter((option) => option.enabled),
-    treatments: preset.treatments.filter((option) => option.enabled),
+    themes: preset.themes
+      .filter((theme) => theme.enabled)
+      .map((theme) => ({
+        ...theme,
+        customisations: theme.customisations
+          .filter((slot) => slot.enabled)
+          .map((slot) => ({ ...slot, options: slot.options.filter((option) => option.enabled) })),
+      })),
     form: { ...preset.form, fields: preset.form.fields.filter((field) => field.enabled) },
   };
 
@@ -192,40 +197,12 @@ export function PresetEditor({ initial }: { initial: Preset }) {
           {tab === "Branding" ? <BrandingTab preset={preset} patch={patch} /> : null}
           {tab === "Guest form" ? <FormTab preset={preset} patch={patch} /> : null}
 
-          {tab === "Scenes" ? (
-            <OptionEditor
-              title="Scenes"
-              description="The background the portrait is set in."
-              idPrefix="scene"
-              allowGenerate
-              options={preset.scenes}
-              config={preset.flow.scene}
-              onChange={(scenes) => patch({ scenes })}
-              onConfigChange={(scene) => patch({ flow: { ...preset.flow, scene } })}
-            />
-          ) : null}
-
-          {tab === "Looks" ? (
-            <OptionEditor
-              title="Looks"
-              description="Costume and pose. Upload a reference photo, or describe it in the prompt."
-              idPrefix="pose"
-              options={preset.poses}
-              config={preset.flow.pose}
-              onChange={(poses) => patch({ poses })}
-              onConfigChange={(pose) => patch({ flow: { ...preset.flow, pose } })}
-            />
-          ) : null}
-
-          {tab === "Styles" ? (
-            <OptionEditor
-              title="Styles"
-              description="How the portrait is rendered — 2D, 3D, abstract, and so on."
-              idPrefix="treatment"
-              options={preset.treatments}
-              config={preset.flow.treatment}
-              onChange={(treatments) => patch({ treatments })}
-              onConfigChange={(treatment) => patch({ flow: { ...preset.flow, treatment } })}
+          {tab === "Themes" ? (
+            <ThemeEditor
+              themes={preset.themes}
+              config={preset.flow.theme}
+              onChange={(themes) => patch({ themes })}
+              onConfigChange={(theme) => patch({ flow: { ...preset.flow, theme } })}
             />
           ) : null}
 
