@@ -116,19 +116,23 @@ test("the live event cannot be deleted out from under the booth", async ({ page 
 test("a saved preset cannot make itself live", async ({ page }) => {
   await signIn(page);
 
-  const presets = await (await page.request.get("/api/admin/presets")).json();
-  const draft = (presets.presets as { id: string; isActive: boolean }[]).find(
-    (preset) => !preset.isActive,
-  );
-  expect(draft).toBeDefined();
+  // Self-contained: a new preset is always a draft. Finding one in the store
+  // instead meant depending on an event another test happened to leave behind,
+  // and this failed the moment that test started cleaning up after itself.
+  const created = await page.request.post("/api/admin/presets", {
+    data: { name: "Self-activation fixture" },
+  });
+  const { preset: draft } = (await created.json()) as { preset: { id: string } };
 
-  const full = await (await page.request.get(`/api/admin/presets/${draft!.id}`)).json();
-  const response = await page.request.put(`/api/admin/presets/${draft!.id}`, {
+  const full = await (await page.request.get(`/api/admin/presets/${draft.id}`)).json();
+  const response = await page.request.put(`/api/admin/presets/${draft.id}`, {
     data: { ...full.preset, isActive: true },
   });
 
   const saved = await response.json();
   expect(saved.preset.isActive).toBe(false);
+
+  await page.request.delete(`/api/admin/presets/${draft.id}`);
 });
 
 test("the sessions table lists guests and exports them as CSV", async ({ page }) => {
