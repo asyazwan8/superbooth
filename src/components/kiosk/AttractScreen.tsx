@@ -73,7 +73,7 @@ export function AttractScreen({ preset, mock }: { preset: PublicPreset; mock: bo
 
         <SuperLogo
           src={preset.branding.logoUrl || undefined}
-          height="56cqi"
+          height="70cqi"
           style={{ position: "relative", maxWidth: "100%" }}
         />
 

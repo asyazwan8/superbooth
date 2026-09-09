@@ -79,7 +79,7 @@ export function GeneratingStep({
 
       <SuperLogo
         src={logoUrl || undefined}
-        height="30cqi"
+        height="36cqi"
         style={{ position: "relative", flexShrink: 0 }}
       />
 
