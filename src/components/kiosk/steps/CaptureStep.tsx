@@ -215,18 +215,20 @@ export function CaptureStep({
 }
 
 /**
- * Where to stand.
+ * Where to put your face.
  *
- * An oval told a guest to put their face somewhere; a head-and-shoulders
- * silhouette tells them how far back to stand and how to square up, which is
- * the framing the prompt actually asks the model for (waist-up, whole head,
- * headroom). Drawn as a hard dashed gold rule over a vignette rather than a
- * translucent overlay — on a bright venue screen a soft guide is invisible
- * from where the guest is really standing.
+ * An ellipse taller than it is wide, at head proportions: it asks a guest to
+ * fill it with their face, which is what sets the distance the prompt then
+ * asks the model to render — whole head, headroom, waist-up. Drawn as a hard
+ * dashed gold rule over a vignette rather than a translucent overlay, because
+ * on a bright venue screen a soft guide is invisible from where the guest is
+ * really standing.
  *
- * The viewBox is portrait and fitted with `meet`, so the figure keeps its
- * proportions and is never cropped by a preview box that is shorter or wider
- * than the booth's — an operator's laptop shows the same guide the kiosk does.
+ * SVG rather than a CSS ellipse so the shape is fixed rather than derived
+ * from the box: `meet` on a portrait viewBox keeps it the same oval whether
+ * it is drawn on the booth's 9:16 preview or the shorter, wider one on an
+ * operator's laptop. A percentage-sized ellipse would stretch with the box
+ * and stop being a face anywhere but the kiosk.
  */
 function FramingGuide() {
   return (
@@ -236,7 +238,7 @@ function FramingGuide() {
           position: "absolute",
           inset: 0,
           background:
-            "radial-gradient(78% 58% at 50% 40%, transparent 58%, rgba(13,7,21,0.78) 100%)",
+            "radial-gradient(72% 54% at 50% 38%, transparent 58%, rgba(13,7,21,0.78) 100%)",
         }}
       />
       <svg
@@ -244,36 +246,17 @@ function FramingGuide() {
         preserveAspectRatio="xMidYMid meet"
         style={{ position: "absolute", inset: 0, height: "100%", width: "100%" }}
       >
-        <path
-          d="M30 13
-             c 7 0 12.6 6.3 12.6 14.5
-             c 0 8.5 -5.6 15.5 -12.6 15.5
-             c -7 0 -12.6 -7 -12.6 -15.5
-             c 0 -8.2 5.6 -14.5 12.6 -14.5 Z"
+        {/* Sat above centre: a face filling this leaves the shoulders in
+            frame below it rather than cropped at the bottom edge. */}
+        <ellipse
+          cx="30"
+          cy="38"
+          rx="15"
+          ry="21"
           fill="none"
           stroke="var(--sb-gold)"
           strokeWidth="0.8"
           strokeDasharray="2.6 2"
-          opacity="0.8"
-        />
-        {/* Neck and shoulders, in two runs that tuck under the head outline
-            and leave the frame at the bottom edge. A guest who fills this is
-            standing at the distance the prompt asks the model to render:
-            waist-up, whole head, headroom to spare. */}
-        <path
-          d="M6 100
-             C 6 78 12 66 22.2 53.5
-             c 2.4 -3 3.4 -4 3.4 -6.5
-             V 40
-             M 34.4 40
-             v 7
-             c 0 2.5 1 3.5 3.4 6.5
-             C 48 66 54 78 54 100"
-          fill="none"
-          stroke="var(--sb-gold)"
-          strokeWidth="0.8"
-          strokeDasharray="2.6 2"
-          strokeLinecap="round"
           opacity="0.8"
         />
       </svg>
