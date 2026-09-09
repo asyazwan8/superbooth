@@ -20,9 +20,19 @@ export interface CaptureOptions {
   quality?: number;
 }
 
+/*
+ * Sized for the upload, not for the archive.
+ *
+ * This is a reference the model reads, never something a guest receives — the
+ * portrait they take home is generated at the preset's own resolution. It
+ * travels as base64 inside a JSON body, which is a third larger again, over
+ * whatever the venue has: hall Wi-Fi, or a phone on 4G with two bars. A
+ * megabyte of extra detail the model does not use buys nothing and is a
+ * request that can drop halfway.
+ */
 export function captureFrame(
   video: HTMLVideoElement,
-  { maxEdge = 1600, quality = 0.92 }: CaptureOptions = {},
+  { maxEdge = 1280, quality = 0.85 }: CaptureOptions = {},
 ): string {
   const sourceWidth = video.videoWidth;
   const sourceHeight = video.videoHeight;

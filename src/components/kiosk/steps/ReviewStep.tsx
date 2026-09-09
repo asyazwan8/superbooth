@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { StepDots, StepFooter, StepHeader } from "@/components/ds/booth";
+import { FittedPhoto } from "@/components/kiosk/FittedPhoto";
 import { Button } from "@/components/ds/core";
 
 /**
@@ -36,31 +36,15 @@ export function ReviewStep({
         tone="paper"
       />
 
-      <div
-        style={{
-          position: "relative",
-          flex: 1,
-          // Without this the photo refuses to shrink below its content and
-          // pushes the footer off a short stage — an operator's laptop, or a
-          // kiosk in a browser with chrome.
-          minHeight: 0,
-          overflow: "hidden",
-          margin: "0 var(--booth-gutter)",
-          border: "var(--border-heavy) solid var(--line-hard)",
-          boxShadow: "var(--shadow-slam)",
-          background: "var(--sb-ink-2)",
-        }}
-      >
-        {/* A capture is a local data URL, so next/image optimisation is skipped. */}
-        <Image
-          src={photo}
-          alt="Your photo"
-          fill
-          sizes="100vw"
-          style={{ objectFit: "cover" }}
-          unoptimized
-        />
-      </div>
+      {/* The guest's own capture, at the camera's aspect rather than the
+          stage's — they are deciding whether to keep this exact frame. */}
+      <FittedPhoto
+        src={photo}
+        alt="Your photo"
+        border="var(--border-heavy) solid var(--line-hard)"
+        shadow="var(--shadow-slam)"
+        areaStyle={{ margin: "0 var(--booth-gutter)" }}
+      />
 
       <StepFooter
         onBack={onBack}

@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useState } from "react";
+import { FittedPhoto } from "@/components/kiosk/FittedPhoto";
 import { QrPanel } from "@/components/ds/booth";
 import { Button } from "@/components/ds/core";
 
@@ -47,32 +47,12 @@ export function ResultStep({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <div
-        style={{
-          position: "relative",
-          flex: 1,
-          // Without this the photo refuses to shrink below its content and
-          // pushes the footer off a short stage — an operator's laptop, or a
-          // kiosk in a browser with chrome.
-          minHeight: 0,
-          overflow: "hidden",
-          margin: "var(--space-6) var(--booth-gutter) 0",
-          // Paper, not the house ink rule: these three screens sit on the ink
-          // stage, where a black edge round a dark photo is no edge at all.
-          border: "var(--border-heavy) solid var(--sb-paper)",
-          background: "var(--sb-ink-2)",
-        }}
-      >
-        <Image
-          src={finalUrl}
-          alt="Your finished portrait"
-          fill
-          sizes="100vw"
-          style={{ objectFit: "cover" }}
-          unoptimized
-          priority
-        />
-      </div>
+      <FittedPhoto
+        src={finalUrl}
+        alt="Your finished portrait"
+        priority
+        areaStyle={{ margin: "var(--space-6) var(--booth-gutter) 0" }}
+      />
 
       <div style={{ flexShrink: 0, padding: "var(--space-6) var(--booth-gutter) 0" }}>
         <QrPanel qrSrc={qrDataUrl} shareUrl={shareUrl} />

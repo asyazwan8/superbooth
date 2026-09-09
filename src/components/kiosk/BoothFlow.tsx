@@ -96,14 +96,65 @@ const EMPTY_SESSION: SessionState = {
   attempts: 0,
 };
 
-async function postJson<T>(url: string, body: unknown): Promise<T> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
+/**
+ * A request that failed with something a guest may read.
+ *
+ * The server already maps its known failures onto plain sentences (lib/api),
+ * so those can go straight to the screen. A `fetch` that never completes
+ * cannot: the browser's own message is "Load failed" on Safari and "Failed to
+ * fetch" on Chrome, and a guest who reads either of those on a booth has been
+ * shown an internal. The flag is what keeps the two apart.
+ */
+class BoothRequestError extends Error {
+  constructor(
+    message: string,
+    readonly guestSafe: boolean,
+  ) {
+    super(message);
+    this.name = "BoothRequestError";
+  }
+}
+
+/** The sentence to show, given a failure and the step's own fallback. */
+function guestMessage(cause: unknown, fallback: string): string {
+  return cause instanceof BoothRequestError && cause.guestSafe ? cause.message : fallback;
+}
+
+const RETRY_DELAY_MS = 700;
+
+/**
+ * `retries` covers the transport, not the request.
+ *
+ * A booth runs on venue Wi-Fi and phone data, where a POST that never reaches
+ * the server is ordinary — the generation poller already shrugs those off, and
+ * the mutations were the only thing that turned one into a dead end. A retry
+ * only happens when `fetch` itself threw, meaning no response was received.
+ *
+ * It is opt-in per call because one of these requests spends money: retrying
+ * `/api/booth/generate` after a dropped connection could submit a second
+ * billable generation for a request the server had already accepted. That one
+ * is left to the guest's own "Try again", which goes through the retry limit.
+ */
+async function postJson<T>(url: string, body: unknown, retries = 0): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    if (retries > 0) {
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+      return postJson<T>(url, body, retries - 1);
+    }
+    throw new BoothRequestError("transport", false);
+  }
+
   const data = (await response.json().catch(() => ({}))) as T & { error?: string };
-  if (!response.ok) throw new Error(data.error ?? "Something went wrong. Please try again.");
+  if (!response.ok) {
+    throw new BoothRequestError(data.error ?? "Something went wrong. Please try again.", true);
+  }
   return data;
 }
 
@@ -189,14 +240,15 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
     setError(null);
     try {
       void engage();
-      const { sessionId } = await postJson<{ sessionId: string }>("/api/booth/session", {
-        fields,
-        consentAccepted: consent,
-      });
+      const { sessionId } = await postJson<{ sessionId: string }>(
+        "/api/booth/session",
+        { fields, consentAccepted: consent },
+        2,
+      );
       setSession((state) => ({ ...state, sessionId }));
       advance("details");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not start your session.");
+      setError(guestMessage(cause, "The booth could not reach the internet. Please try again."));
     } finally {
       setBusy(false);
     }
@@ -260,13 +312,14 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
     setBusy(true);
     setError(null);
     try {
-      await postJson("/api/booth/upload", {
-        sessionId: session.sessionId,
-        dataUrl: session.photo,
-      });
+      await postJson(
+        "/api/booth/upload",
+        { sessionId: session.sessionId, dataUrl: session.photo },
+        2,
+      );
       await startGeneration(session.sessionId);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not send your photo.");
+      setError(guestMessage(cause, "Your photo could not be sent. Please check the connection and try again."));
     } finally {
       setBusy(false);
     }
@@ -279,7 +332,7 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
     try {
       await startGeneration(session.sessionId);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not try again.");
+      setError(guestMessage(cause, "The booth could not reach the internet. Please try again."));
     } finally {
       setBusy(false);
     }
@@ -295,11 +348,11 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
           finalUrl: string;
           shareUrl: string;
           qrDataUrl: string;
-        }>("/api/booth/select", { sessionId: session.sessionId, index });
+        }>("/api/booth/select", { sessionId: session.sessionId, index }, 2);
         setSession((state) => ({ ...state, ...result }));
         setStep("result");
       } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Could not prepare your download.");
+        setError(guestMessage(cause, "Your download could not be prepared. Please try again."));
       } finally {
         setBusy(false);
       }
