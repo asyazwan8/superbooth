@@ -35,6 +35,14 @@ test("an operator duplicates an event, edits it, and takes it live", async ({ pa
   await signIn(page);
   await expect(page.getByRole("heading", { name: "Events" })).toBeVisible();
 
+  // Remembered so this test can put it back. The local store outlives a run,
+  // so leaving a different event live means the next `npm run e2e` walks the
+  // booth against a preset whose flow the kiosk specs do not expect.
+  const livePresets = await (await page.request.get("/api/admin/presets")).json();
+  const previouslyLive = (livePresets.presets as { id: string; isActive: boolean }[]).find(
+    (preset) => preset.isActive,
+  );
+
   await presetRow(page, "Superbooth Demo").getByRole("button", { name: "Duplicate" }).click();
 
   await page.waitForURL(/\/admin\/presets\//);
@@ -79,6 +87,10 @@ test("an operator duplicates an event, edits it, and takes it live", async ({ pa
   expect(preset.name).toBe("KL Launch Night");
   expect(preset.branding.attractHeadline).toBe("Be the poster");
   expect(preset.flow.treatment.mode).toBe("fixed");
+
+  if (previouslyLive) {
+    await page.request.post(`/api/admin/presets/${previouslyLive.id}/activate`);
+  }
 });
 
 test("the live event cannot be deleted out from under the booth", async ({ page }) => {
