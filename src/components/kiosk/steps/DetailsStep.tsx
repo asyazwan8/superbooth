@@ -67,14 +67,29 @@ export function DetailsStep({
         tone="ink"
       />
 
+      {/*
+        The form is centred in the space between the header and the button
+        rather than stacked under the header. An operator asking for two
+        fields on a 9:16 stage left roughly a third of the screen as bare
+        ground below the consent block; centring turns that into even air
+        above and below a single group, which reads as composed rather than
+        as something that failed to load.
+
+        `safe center` is what makes that sound with a long consent notice or
+        a preset that enables every field: once the group is taller than the
+        space, centring is abandoned and the column falls back to top-aligned
+        and scrollable, instead of centring the overflow out of reach.
+      */}
       <div
         style={{
           flex: 1,
+          minHeight: 0,
           overflowY: "auto",
           display: "flex",
           flexDirection: "column",
+          justifyContent: "safe center",
           gap: "var(--booth-stack)",
-          padding: "0 var(--booth-gutter) var(--space-6)",
+          padding: "0 var(--booth-gutter) var(--space-4)",
         }}
       >
         {fields.map((field) => (
@@ -102,6 +117,20 @@ export function DetailsStep({
             }
           />
         ))}
+
+        {/* A rule, not a gap: the consent notice is a different kind of ask
+            from the fields above it, and the group needs an internal edge to
+            stop reading as one long form. */}
+        <span
+          aria-hidden="true"
+          style={{
+            flexShrink: 0,
+            height: "var(--border-hard)",
+            background: "var(--line-hard)",
+            opacity: 0.28,
+            transform: "skewX(var(--skew-brand))",
+          }}
+        />
 
         <ConsentCheck
           checked={consent}
@@ -156,7 +185,7 @@ export function DetailsStep({
       <footer
         style={{
           flexShrink: 0,
-          padding: "var(--space-4) var(--booth-gutter) var(--space-8)",
+          padding: "var(--space-4) var(--booth-gutter) var(--space-6)",
         }}
       >
         <Button full onClick={submit} disabled={busy}>

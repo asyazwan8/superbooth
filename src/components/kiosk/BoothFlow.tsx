@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { AttendantMenu } from "@/components/kiosk/AttendantMenu";
 import { IdleOverlay } from "@/components/kiosk/IdleOverlay";
 import { KioskFrame } from "@/components/kiosk/KioskFrame";
@@ -17,6 +18,7 @@ import { ResultStep } from "@/components/kiosk/steps/ResultStep";
 import { ReviewStep } from "@/components/kiosk/steps/ReviewStep";
 import { useIdleReset } from "@/hooks/useIdleReset";
 import { useKioskMode } from "@/hooks/useKioskMode";
+import { readBoothMotion, stepVariants } from "@/lib/booth/motion";
 import {
   optionsFor,
   progressSteps,
@@ -98,7 +100,17 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
   const sequence = stepSequence(preset);
   const progress = progressSteps(preset);
 
-  const [step, setStep] = useState<StepId>("details");
+  const [step, setStepId] = useState<StepId>("details");
+  // Which way the journey just moved, so a transition can carry the same
+  // meaning the Back button does: forward enters from the right, Back from the
+  // left. Held in state rather than a ref because it is read while rendering.
+  const [direction, setDirection] = useState<1 | -1>(1);
+
+  const setStep = useCallback((next: StepId, towards: 1 | -1 = 1) => {
+    setDirection(towards);
+    setStepId(next);
+  }, []);
+
   const [fields, setFields] = useState<Record<string, string>>({});
   const [consent, setConsent] = useState(false);
   const [choices, setChoices] = useState<Record<ChoiceKey, string | null>>({
@@ -113,7 +125,7 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
   const [elapsedMs, setElapsedMs] = useState(0);
 
   const reset = useCallback(() => {
-    setStep("details");
+    setStep("details", -1);
     setFields({});
     setConsent(false);
     setChoices({ scene: null, pose: null, treatment: null });
@@ -124,7 +136,7 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
     setElapsedMs(0);
     // Pull any preset changes an operator made while this session ran.
     router.replace("/");
-  }, [router]);
+  }, [router, setStep]);
 
   // The idle watchdog is suspended while a generation is in flight — a guest
   // watching a progress bar is not idle, and resetting would abandon a request
@@ -141,14 +153,14 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
       const next = sequence[index + 1];
       if (next) setStep(next);
     },
-    [sequence],
+    [sequence, setStep],
   );
 
   const goBack = useCallback(() => {
     const index = sequence.indexOf(step);
     const previous = sequence[index - 1];
-    if (previous) setStep(previous);
-  }, [sequence, step]);
+    if (previous) setStep(previous, -1);
+  }, [sequence, setStep, step]);
 
   /* ---------------------------------------------------------------- */
   /* Step actions                                                      */
@@ -198,7 +210,7 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
         attempts: state.attempts + 1,
       }));
     },
-    [choices],
+    [choices, setStep],
   );
 
   const confirmPhoto = useCallback(async () => {
@@ -250,7 +262,7 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
         setBusy(false);
       }
     },
-    [session.sessionId],
+    [session.sessionId, setStep],
   );
 
   /* ---------------------------------------------------------------- */
@@ -319,7 +331,7 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
       cancelled = true;
       if (pollRef.current) window.clearTimeout(pollRef.current);
     };
-  }, [confirmVariant, session.requestId, session.sessionId, step]);
+  }, [confirmVariant, session.requestId, session.sessionId, setStep, step]);
 
   /* ---------------------------------------------------------------- */
   /* Render                                                            */
@@ -327,6 +339,19 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
 
   const dotIndex = Math.max(0, progress.indexOf(step));
   const canRetry = session.attempts <= preset.generation.retryLimit;
+
+  // A guest who has asked their operating system for less motion gets none:
+  // the step still swaps, it just does not travel.
+  const still = useReducedMotion() ?? false;
+  // Read once per mount. The tokens do not change while a booth is running,
+  // and reading them during render keeps the values available on the very
+  // first transition rather than one step later.
+  const timings = useMemo(() => readBoothMotion(), []);
+  const variants = useMemo(() => stepVariants(timings, still), [still, timings]);
+
+  // The error screen replaces whatever step raised it, so it is its own frame
+  // in the transition rather than a silent swap of the step's contents.
+  const frame = error ? "error" : step;
 
   const body = (() => {
     if (error) {
@@ -393,10 +418,10 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
             busy={busy}
             onRetake={() => {
               setSession((state) => ({ ...state, photo: null }));
-              setStep("capture");
+              setStep("capture", -1);
             }}
             onConfirm={confirmPhoto}
-            onBack={() => setStep("capture")}
+            onBack={() => setStep("capture", -1)}
             dotsTotal={progress.length}
             dotsCurrent={Math.max(0, progress.indexOf("capture"))}
           />
@@ -457,7 +482,26 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
         </span>
       ) : null}
 
-      <div style={{ height: "100%" }}>{body}</div>
+      {/*
+        `mode="wait"` rather than a crossfade: two screens on the stage at once
+        means two copies of every control, which is wrong for a touchscreen a
+        guest is already reaching for — and wrong for anything, a test runner
+        included, that expects one "Continue" button. `initial={false}` keeps
+        the first paint still; the booth's own slabs already slam in.
+      */}
+      <AnimatePresence initial={false} mode="wait" custom={direction}>
+        <motion.div
+          key={frame}
+          custom={direction}
+          variants={variants}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          style={{ height: "100%" }}
+        >
+          {body}
+        </motion.div>
+      </AnimatePresence>
 
       {idle.warning && !error ? (
         <IdleOverlay countdown={idle.countdown} onStay={idle.dismiss} onReset={reset} />
