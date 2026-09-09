@@ -24,9 +24,19 @@ function preset(overrides: Partial<PublicPreset> = {}): PublicPreset {
   };
 }
 
+/**
+ * The shipped preset carries no poses — a scene brings its own wardrobe — so
+ * anything asserting on the pose step supplies its own options rather than
+ * relying on demo content that is the operator's to change.
+ */
+const POSES: PublicPreset["poses"] = [
+  { id: "pose-a", label: "A", prompt: "a", imageUrl: null, useAsReference: true, enabled: true },
+  { id: "pose-b", label: "B", prompt: "b", imageUrl: null, useAsReference: true, enabled: true },
+];
+
 describe("stepSequence", () => {
   it("asks every choice when they are all selectable", () => {
-    expect(stepSequence(preset())).toEqual([
+    expect(stepSequence(preset({ poses: POSES }))).toEqual([
       "details",
       "scene",
       "pose",
@@ -39,10 +49,29 @@ describe("stepSequence", () => {
     ]);
   });
 
+  it("drops a choice family the preset has no options for", () => {
+    const sequence = stepSequence(preset());
+    expect(preset().poses).toHaveLength(0);
+    expect(sequence).not.toContain("pose");
+    expect(sequence).toEqual([
+      "details",
+      "scene",
+      "treatment",
+      "capture",
+      "review",
+      "generating",
+      "pick",
+      "result",
+    ]);
+  });
+
   it("skips a step the operator has fixed", () => {
     const base = preset();
     const sequence = stepSequence(
-      preset({ flow: { ...base.flow, scene: { mode: "fixed", fixedId: "scene-studio" } } }),
+      preset({
+        poses: POSES,
+        flow: { ...base.flow, scene: { mode: "fixed", fixedId: "scene-space" } },
+      }),
     );
 
     expect(sequence).not.toContain("scene");
@@ -68,11 +97,11 @@ describe("resolveOption", () => {
   it("returns the operator's pinned option regardless of what the client sends", () => {
     const base = preset();
     const pinned = preset({
-      flow: { ...base.flow, treatment: { mode: "fixed", fixedId: "treatment-abstract" } },
+      flow: { ...base.flow, treatment: { mode: "fixed", fixedId: "treatment-superhero" } },
     });
 
     // A stale or tampered client could send any id; the fixed choice wins.
-    expect(resolveOption(pinned, "treatment", "treatment-2d")?.id).toBe("treatment-abstract");
+    expect(resolveOption(pinned, "treatment", "treatment-2d")?.id).toBe("treatment-superhero");
   });
 
   it("falls back to the first option when the pinned id no longer exists", () => {
@@ -102,7 +131,7 @@ describe("resolveOption", () => {
 
 describe("progressSteps", () => {
   it("counts only what the guest works through before the shutter", () => {
-    const steps = progressSteps(preset());
+    const steps = progressSteps(preset({ poses: POSES }));
     expect(steps).toEqual(["details", "scene", "pose", "treatment", "capture"]);
     expect(steps).not.toContain("pick");
     expect(steps).not.toContain("result");
@@ -111,11 +140,11 @@ describe("progressSteps", () => {
 
 describe("isChoiceVisible", () => {
   it("hides a fixed choice and shows a selectable one", () => {
-    const base = preset();
+    const base = preset({ poses: POSES });
     expect(isChoiceVisible(base, "pose")).toBe(true);
     expect(
       isChoiceVisible(
-        preset({ flow: { ...base.flow, pose: { mode: "fixed", fixedId: null } } }),
+        preset({ poses: POSES, flow: { ...base.flow, pose: { mode: "fixed", fixedId: null } } }),
         "pose",
       ),
     ).toBe(false);

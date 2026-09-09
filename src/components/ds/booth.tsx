@@ -17,6 +17,46 @@ import type { CSSProperties, ReactNode } from "react";
 
 export type StageGround = "stage" | "menu" | "purple";
 
+/**
+ * Structural sizing, re-expressed against the stage.
+ *
+ * The stage is a container-query context and type already scales with `cqi`,
+ * but the *structure* around it — tap targets, gutters, stack gaps, the
+ * progress bar — was fixed px. On the real 1080x1920 kiosk the stage is twice
+ * the width of a laptop preview, so type doubled while every box stayed put
+ * and the difference came out as dead space. These re-declare the same custom
+ * properties on the stage so they scale with it.
+ *
+ * `max(token, Ncqi)` keeps the design system's px as a floor: the coefficients
+ * are calibrated so each value equals its token exactly at a 480px stage, is
+ * clamped to the token below that (an operator's small preview, a phone-sized
+ * E2E viewport) and grows from there. Nothing here edits src/styles/tokens —
+ * this is the booth layer overriding inherited values for its own subtree,
+ * which is the only place the kiosk's proportions are anyone's business.
+ *
+ * Declared on the stage rather than inside it on purpose: custom properties
+ * inherit as unresolved values, so the `cqi` in each one is resolved by the
+ * descendant that uses it, against the stage it sits in.
+ */
+const BOOTH_SCALE = {
+  "--tap-min": "max(64px, 13.3cqi)",
+  "--booth-gutter": "max(28px, 5.8cqi)",
+  "--booth-stack": "max(24px, 5cqi)",
+  "--space-4": "max(16px, 3.3cqi)",
+  "--space-5": "max(20px, 4.2cqi)",
+  "--space-6": "max(24px, 5cqi)",
+  "--space-8": "max(32px, 6.7cqi)",
+  "--space-10": "max(40px, 8.3cqi)",
+  "--space-12": "max(48px, 10cqi)",
+
+  /* Booth-only structure the token set has no name for. Each is read with a
+     fallback at its call site, so the component still renders correctly
+     outside a stage — the operator's preview, a unit test, Storybook. */
+  "--booth-bar": "max(22px, 6cqi)", /* deliberately heavier than the 22px floor */
+  "--booth-thumb": "max(68px, 15cqi)",
+  "--booth-mark": "max(96px, 20cqi)",
+} as CSSProperties;
+
 const STAGE_GROUNDS: Record<StageGround, CSSProperties> = {
   stage: { background: "var(--surface-stage)", color: "var(--text-invert)" },
   menu: { background: "var(--surface-menu)", color: "var(--text-strong)" },
@@ -62,6 +102,7 @@ export function BoothFrame({
           width: "min(100cqw, calc(100cqh * 9 / 16))",
           height: "min(100cqh, calc(100cqw * 16 / 9))",
           overflow: "hidden",
+          ...BOOTH_SCALE,
           ...STAGE_GROUNDS[ground],
           ...style,
         }}
@@ -232,8 +273,10 @@ export function StepDots({ total, current }: { total: number; current: number })
         <span
           key={index}
           style={{
-            height: 14,
-            width: index === current ? 44 : 14,
+            // Ticks scale with the stage too: a 14px mark is a smudge on a
+            // 55" screen read from two metres away.
+            height: "max(14px, 2.9cqi)",
+            width: index === current ? "max(44px, 9.2cqi)" : "max(14px, 2.9cqi)",
             background: index <= current ? "var(--sb-pink)" : "transparent",
             border: "var(--border-hair) solid var(--line-hard)",
             transform: "skewX(var(--skew-brand))",
@@ -254,8 +297,8 @@ export function BackButton({ onClick }: { onClick: () => void }) {
       aria-label="Go back"
       onClick={onClick}
       style={{
-        width: 64,
-        height: 64,
+        width: "var(--tap-min)",
+        height: "var(--tap-min)",
         flexShrink: 0,
         display: "grid",
         placeItems: "center",
@@ -265,7 +308,7 @@ export function BackButton({ onClick }: { onClick: () => void }) {
         boxShadow: "var(--shadow-slam-press)",
         cursor: "pointer",
         fontFamily: "var(--font-display)",
-        fontSize: 30,
+        fontSize: "clamp(1.875rem, 6.2cqi, 3.5rem)",
         lineHeight: 1,
         padding: 0,
       }}
@@ -305,10 +348,10 @@ export function StepFooter({
         {onBack ? (
           <BackButton onClick={onBack} />
         ) : (
-          <span style={{ width: 64, height: 64, flexShrink: 0 }} />
+          <span style={{ width: "var(--tap-min)", height: "var(--tap-min)", flexShrink: 0 }} />
         )}
         <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>{dots}</div>
-        <span style={{ width: 64, height: 64, flexShrink: 0 }} />
+        <span style={{ width: "var(--tap-min)", height: "var(--tap-min)", flexShrink: 0 }} />
       </div>
     </footer>
   );
@@ -335,9 +378,95 @@ export interface BoothOptionView {
 }
 
 /**
- * One choosable scene, look or style. Cards carry a preview image when the
- * operator has supplied one and fall back to a flat colour field with the
- * label set large, so a booth is usable before any art exists.
+ * One choosable scene, look or style.
+ *
+ * Cards carry a preview image when the operator has supplied one. When they
+ * have not — which is every booth on the morning of setup, and plenty of them
+ * at doors — the card is *composed* rather than left blank: the accent field
+ * carries the option's own name set huge as outlined display type, a stripe
+ * and halftone pass to give the colour some tooth, and a mono ordinal tag.
+ * The solid label slab stays on top of both variants so legibility never
+ * depends on the treatment underneath it.
+ */
+function OptionFallback({ label, index }: { label: string; index: number }) {
+  return (
+    <>
+      {/* Texture pass. Two layers, both hard-edged: the house has no blur. */}
+      <span
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage: "var(--texture-halftone)",
+          backgroundSize: "var(--texture-halftone-size)",
+          opacity: 0.42,
+        }}
+      />
+      <span
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage: "var(--texture-stripe)",
+        }}
+      />
+
+      {/* The option's own name, oversized and outlined, filling the field
+          behind the solid label slab. Decorative and duplicated by that slab,
+          so it is hidden from the accessibility tree — a card must announce
+          its label once. */}
+      <span
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          alignItems: "center",
+          padding: "var(--space-4)",
+          fontFamily: "var(--font-display)",
+          fontSize: "clamp(1.5rem, 7.5cqi, 3.5rem)",
+          lineHeight: 0.86,
+          letterSpacing: "var(--tracking-display)",
+          textTransform: "uppercase",
+          color: "transparent",
+          WebkitTextStroke: "2px var(--sb-ink)",
+          opacity: 0.5,
+          transform: "skewX(var(--skew-brand))",
+          overflowWrap: "anywhere",
+        }}
+      >
+        {label}
+      </span>
+
+      {/* Mono ordinal, so a set of six reads as a numbered menu. Top LEFT:
+          the tick that appears on selection owns the opposite corner. */}
+      <span
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          padding: "4px 10px 5px",
+          background: "var(--sb-ink)",
+          color: "var(--sb-paper)",
+          font: "var(--type-label)",
+          fontSize: "max(0.75rem, 2.2cqi)",
+          letterSpacing: "var(--tracking-label)",
+        }}
+      >
+        {String(index + 1).padStart(2, "0")}
+      </span>
+    </>
+  );
+}
+
+/**
+ * One choosable scene, look or style.
+ *
+ * Selection is loud on purpose: the border goes heavy, the card lifts onto a
+ * larger offset shadow, an inner paper rule doubles the frame, and a ring
+ * snaps out of the tick once. On a booth with a queue behind it a guest gets
+ * one glance to confirm the tap registered.
  */
 export function OptionCard({
   label,
@@ -375,8 +504,8 @@ export function OptionCard({
         cursor: "pointer",
         background: accent,
         border: `${selected ? "var(--border-heavy)" : "var(--border-hard)"} solid var(--line-hard)`,
-        boxShadow: selected ? "var(--shadow-slam)" : "var(--shadow-slam-press)",
-        transform: selected ? "translate(-2px, -2px)" : "none",
+        boxShadow: selected ? "var(--shadow-slam-lg)" : "var(--shadow-slam-press)",
+        transform: selected ? "translate(-4px, -4px)" : "none",
         transition:
           "transform var(--dur-instant) var(--ease-snap), box-shadow var(--dur-instant) linear",
         ...style,
@@ -392,30 +521,36 @@ export function OptionCard({
           unoptimized
         />
       ) : (
+        <OptionFallback label={label} index={index} />
+      )}
+
+      {/* Inner rule: a second frame inset from the border, so a selected card
+          reads as chosen from across the hall and not merely as thicker. */}
+      {selected ? (
         <span
           aria-hidden="true"
           style={{
             position: "absolute",
-            inset: 0,
-            backgroundImage: "var(--texture-halftone)",
-            backgroundSize: "var(--texture-halftone-size)",
-            opacity: 0.45,
+            inset: "max(7px, 1.5cqi)",
+            border: "var(--border-hard) solid var(--sb-paper)",
+            pointerEvents: "none",
           }}
         />
-      )}
+      ) : null}
 
       {/* Label slab, bottom-left, leaning with the brand. */}
       <span
         style={{
           position: "absolute",
           left: -4,
-          bottom: 14,
+          bottom: "var(--space-4)",
           maxWidth: "94%",
           padding: "6px 18px 8px",
-          background: "var(--sb-ink)",
-          color: "var(--sb-paper)",
+          background: selected ? "var(--sb-green)" : "var(--sb-ink)",
+          color: selected ? "var(--sb-ink)" : "var(--sb-paper)",
           border: "var(--border-hard) solid var(--line-hard)",
           transform: "skewX(var(--skew-brand))",
+          transition: "background var(--dur-snap) linear, color var(--dur-snap) linear",
         }}
       >
         <span
@@ -437,21 +572,31 @@ export function OptionCard({
           aria-hidden="true"
           style={{
             position: "absolute",
-            top: 10,
-            right: 10,
-            width: 40,
-            height: 40,
+            top: "max(10px, 2cqi)",
+            right: "max(10px, 2cqi)",
+            width: "max(40px, 8.3cqi)",
+            height: "max(40px, 8.3cqi)",
             display: "grid",
             placeItems: "center",
             background: "var(--sb-green)",
             color: "var(--sb-ink)",
             border: "var(--border-hard) solid var(--line-hard)",
             fontFamily: "var(--font-display)",
-            fontSize: 24,
+            fontSize: "clamp(1.5rem, 5cqi, 2.5rem)",
             lineHeight: 1,
           }}
         >
-          &#10005;
+          {/* A hard ring that snaps out once and is gone — the tick's own
+              confirmation, with no blur and nothing left spinning. */}
+          <span
+            style={{
+              position: "absolute",
+              inset: 0,
+              border: "var(--border-hard) solid var(--sb-green)",
+              animation: "sb-ring-pop var(--dur-slam) var(--ease-out-hard) both",
+            }}
+          />
+          <span style={{ position: "relative" }}>&#10005;</span>
         </span>
       ) : null}
     </button>
@@ -521,7 +666,10 @@ export function ProgressBar({ value }: { value: number }) {
       aria-valuemin={0}
       aria-valuemax={100}
       style={{
-        height: 22,
+        // The bar is the only thing moving on the generating screen, so it is
+        // sized as a slab rather than a hairline. `--booth-bar` is set on the
+        // stage; the 22px is the token floor for anything rendered outside one.
+        height: "var(--booth-bar, 22px)",
         width: "100%",
         background: "var(--sb-ink-2)",
         border: "var(--border-hard) solid var(--line-hard)",
@@ -699,8 +847,10 @@ export function QrPanel({
         style={{
           position: "relative",
           flexShrink: 0,
-          width: 132,
-          height: 132,
+          // A guest holds a phone at arm's length: the code is a target first
+          // and a graphic second, so it scales with the screen it is on.
+          width: "max(132px, 27cqi)",
+          height: "max(132px, 27cqi)",
           padding: 8,
           background: "var(--sb-paper)",
           border: "var(--border-hard) solid var(--line-hard)",
@@ -730,20 +880,28 @@ export function QrPanel({
           style={{
             margin: 0,
             fontFamily: "var(--font-display)",
-            fontSize: 26,
+            fontSize: "clamp(1.625rem, 5.4cqi, 3rem)",
             lineHeight: 1,
             textTransform: "uppercase",
           }}
         >
           {title}
         </p>
-        <p style={{ margin: "var(--space-2) 0 0", font: "var(--type-body-sm)" }}>{body}</p>
+        <p
+          style={{
+            margin: "var(--space-2) 0 0",
+            font: "var(--type-body-sm)",
+            fontSize: "max(0.9375rem, 2.9cqi)",
+          }}
+        >
+          {body}
+        </p>
         {shareUrl ? (
           <p
             style={{
               margin: "var(--space-3) 0 0",
               font: "var(--type-meta)",
-              fontSize: 12,
+              fontSize: "max(12px, 2.3cqi)",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",

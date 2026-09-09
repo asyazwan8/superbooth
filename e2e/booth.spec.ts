@@ -44,9 +44,8 @@ test("a guest goes from the idle screen to a downloadable photo", async ({ page 
 
   await fillDetails(page);
 
-  await page.getByRole("button", { name: "Neon City" }).click();
-  await page.getByRole("button", { name: "Hero Stance" }).click();
-  await page.getByRole("button", { name: "3D Character" }).click();
+  await page.getByRole("button", { name: "Neon" }).click();
+  await page.getByRole("button", { name: "3D", exact: true }).click();
 
   await shootAndGenerate(page);
 
@@ -90,14 +89,14 @@ test("back returns through the choice steps without losing the selection", async
   await page.goto("/booth");
   await fillDetails(page);
 
-  await page.getByRole("button", { name: "Neon City" }).click();
-  await expect(page.getByRole("heading", { name: /pick your look/i })).toBeVisible();
+  await page.getByRole("button", { name: "Neon" }).click();
+  await expect(page.getByRole("heading", { name: /choose a style/i })).toBeVisible();
 
   await page.getByRole("button", { name: "Go back" }).click();
   await expect(page.getByRole("heading", { name: /choose your scene/i })).toBeVisible();
 
   // The earlier choice is still selected, so Back is non-destructive.
-  await expect(page.getByRole("button", { name: "Neon City" })).toHaveAttribute(
+  await expect(page.getByRole("button", { name: "Neon" })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -116,9 +115,8 @@ test("the attendant PIN is verified on the server", async ({ page }) => {
 test("a guest can erase their own photo from the result page", async ({ page }) => {
   await page.goto("/booth");
   await fillDetails(page);
-  await page.getByRole("button", { name: "Neon City" }).click();
-  await page.getByRole("button", { name: "Casual" }).click();
-  await page.getByRole("button", { name: "Abstract" }).click();
+  await page.getByRole("button", { name: "Jungle" }).click();
+  await page.getByRole("button", { name: "Superhero" }).click();
   await shootAndGenerate(page);
 
   const shareUrl = await page.getByText(/^http:\/\/localhost:3000\/p\//).innerText();

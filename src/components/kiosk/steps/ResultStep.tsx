@@ -81,7 +81,7 @@ export function ResultStep({
       <footer
         style={{
           flexShrink: 0,
-          padding: "var(--space-5) var(--booth-gutter) var(--space-8)",
+          padding: "var(--space-5) var(--booth-gutter) var(--space-6)",
         }}
       >
         <Button full onClick={onDone}>

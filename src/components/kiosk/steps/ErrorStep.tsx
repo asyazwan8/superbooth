@@ -30,8 +30,8 @@ export function ErrorStep({
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        gap: "var(--space-6)",
-        padding: "var(--booth-gutter)",
+        gap: "var(--space-8)",
+        padding: "var(--space-10) var(--booth-gutter)",
         textAlign: "center",
       }}
     >
@@ -40,15 +40,15 @@ export function ErrorStep({
         style={{
           display: "grid",
           placeItems: "center",
-          width: 96,
-          height: 96,
+          width: "var(--booth-mark, 96px)",
+          height: "var(--booth-mark, 96px)",
           background: "var(--sb-gold)",
           color: "var(--sb-ink)",
           border: "var(--border-heavy) solid var(--line-hard)",
           boxShadow: "var(--shadow-slam)",
           transform: "skewX(var(--skew-brand))",
           fontFamily: "var(--font-display)",
-          fontSize: 54,
+          fontSize: "clamp(3.375rem, 11cqi, 6.5rem)",
           lineHeight: 1,
         }}
       >

@@ -48,9 +48,12 @@ export function AttractScreen({ preset, mock }: { preset: PublicPreset; mock: bo
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
+          // Even air above, between and below the two elements, rather than
+          // a cluster with the slack pushed to the edges. The screen is read
+          // from across a hall: two things, both as large as they can be.
           justifyContent: "center",
-          gap: "7cqi",
-          padding: "var(--booth-gutter)",
+          gap: "9cqi",
+          padding: "var(--space-10) var(--booth-gutter)",
           background: "none",
           border: "none",
           cursor: "pointer",
@@ -70,8 +73,8 @@ export function AttractScreen({ preset, mock }: { preset: PublicPreset; mock: bo
 
         <SuperLogo
           src={preset.branding.logoUrl || undefined}
-          height="42cqi"
-          style={{ position: "relative" }}
+          height="56cqi"
+          style={{ position: "relative", maxWidth: "100%" }}
         />
 
         {/* The headline is a slab that slams in from off-stage: the one piece
@@ -106,68 +109,22 @@ export function AttractScreen({ preset, mock }: { preset: PublicPreset; mock: bo
           </span>
         </span>
 
+        {/* The prompt to act, and nothing else. The tap target is the whole
+            screen, so a drawn target only competed with the lockup for the
+            one glance a passer-by gives the booth. */}
         <span
           style={{
             position: "relative",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "4cqi",
+            font: "var(--type-label)",
+            fontSize: "3cqi",
+            letterSpacing: "var(--tracking-label-wide)",
+            textTransform: "uppercase",
+            textAlign: "center",
+            color: "var(--sb-gold)",
+            animation: starting ? undefined : "sb-blink 1.4s steps(1, end) infinite",
           }}
         >
-          <span
-            style={{
-              position: "relative",
-              width: "22cqi",
-              height: "22cqi",
-              display: "grid",
-              placeItems: "center",
-            }}
-          >
-            <span
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                inset: 0,
-                border: "var(--border-hard) solid var(--sb-pink)",
-                borderRadius: "var(--radius-pill)",
-                animation: "sb-ring-pop 2.2s var(--ease-out-hard) infinite",
-              }}
-            />
-            <span
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                inset: 0,
-                border: "var(--border-hard) solid var(--sb-pink)",
-                borderRadius: "var(--radius-pill)",
-                animation: "sb-ring-pop 2.2s var(--ease-out-hard) 1.1s infinite",
-              }}
-            />
-            <span
-              aria-hidden="true"
-              style={{
-                width: "13cqi",
-                height: "13cqi",
-                background: "var(--sb-green)",
-                border: "var(--border-hard) solid var(--line-hard)",
-                borderRadius: "var(--radius-pill)",
-              }}
-            />
-          </span>
-
-          <span
-            style={{
-              font: "var(--type-label)",
-              fontSize: "2.4cqi",
-              letterSpacing: "var(--tracking-label-wide)",
-              textTransform: "uppercase",
-              color: "var(--sb-gold)",
-              animation: starting ? undefined : "sb-blink 1.4s steps(1, end) infinite",
-            }}
-          >
-            {starting ? "Starting…" : preset.branding.attractSubline}
-          </span>
+          {starting ? "Starting…" : preset.branding.attractSubline}
         </span>
 
         {mock ? (

@@ -68,8 +68,8 @@ export function PickStep({
           flexShrink: 0,
           display: "flex",
           justifyContent: "center",
-          gap: "var(--space-3)",
-          padding: "var(--space-4) var(--booth-gutter) 0",
+          gap: "var(--space-4)",
+          padding: "var(--space-5) var(--booth-gutter) 0",
         }}
       >
         {images.map((image, index) => {
@@ -83,8 +83,11 @@ export function PickStep({
               aria-pressed={on}
               style={{
                 position: "relative",
-                width: 68,
-                height: 104,
+                // A 68px chip on a 1080-wide stage is a stamp: the thumbnails
+                // are the comparison control, so they scale with the screen
+                // and keep the 2:3 crop of the portrait they stand for.
+                width: "var(--booth-thumb, 68px)",
+                aspectRatio: "68 / 104",
                 padding: 0,
                 cursor: "pointer",
                 overflow: "hidden",
@@ -96,7 +99,14 @@ export function PickStep({
                 transition: "all var(--dur-instant) var(--ease-snap)",
               }}
             >
-              <Image src={image} alt="" fill sizes="68px" style={{ objectFit: "cover" }} unoptimized />
+              <Image
+                src={image}
+                alt=""
+                fill
+                sizes="20vw"
+                style={{ objectFit: "cover" }}
+                unoptimized
+              />
             </button>
           );
         })}
@@ -108,7 +118,7 @@ export function PickStep({
           display: "flex",
           flexDirection: "column",
           gap: "var(--space-3)",
-          padding: "var(--space-4) var(--booth-gutter) var(--space-6)",
+          padding: "var(--space-5) var(--booth-gutter) var(--space-6)",
         }}
       >
         <Button full onClick={() => onConfirm(selected)} disabled={busy}>

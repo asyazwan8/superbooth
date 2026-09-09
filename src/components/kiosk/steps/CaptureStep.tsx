@@ -106,32 +106,7 @@ export function CaptureStep({
           }}
         />
 
-        {/* Framing guide. The oval is a hard ink-and-gold rule rather than a
-            soft overlay: on a bright venue screen a translucent guide is
-            invisible from where the guest is actually standing. */}
-        <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "radial-gradient(75% 55% at 50% 42%, transparent 55%, rgba(13,7,21,0.78) 100%)",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              left: "50%",
-              top: "30%",
-              height: "34%",
-              width: "62%",
-              transform: "translate(-50%, -50%)",
-              borderRadius: "50%",
-              border: "var(--border-hard) dashed var(--sb-gold)",
-              opacity: 0.75,
-            }}
-          />
-        </div>
+        <FramingGuide />
 
         {state !== "ready" ? (
           <div
@@ -235,6 +210,73 @@ export function CaptureStep({
           </Button>
         }
       />
+    </div>
+  );
+}
+
+/**
+ * Where to stand.
+ *
+ * An oval told a guest to put their face somewhere; a head-and-shoulders
+ * silhouette tells them how far back to stand and how to square up, which is
+ * the framing the prompt actually asks the model for (waist-up, whole head,
+ * headroom). Drawn as a hard dashed gold rule over a vignette rather than a
+ * translucent overlay — on a bright venue screen a soft guide is invisible
+ * from where the guest is really standing.
+ *
+ * The viewBox is portrait and fitted with `meet`, so the figure keeps its
+ * proportions and is never cropped by a preview box that is shorter or wider
+ * than the booth's — an operator's laptop shows the same guide the kiosk does.
+ */
+function FramingGuide() {
+  return (
+    <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "radial-gradient(78% 58% at 50% 40%, transparent 58%, rgba(13,7,21,0.78) 100%)",
+        }}
+      />
+      <svg
+        viewBox="0 0 60 100"
+        preserveAspectRatio="xMidYMid meet"
+        style={{ position: "absolute", inset: 0, height: "100%", width: "100%" }}
+      >
+        <path
+          d="M30 13
+             c 7 0 12.6 6.3 12.6 14.5
+             c 0 8.5 -5.6 15.5 -12.6 15.5
+             c -7 0 -12.6 -7 -12.6 -15.5
+             c 0 -8.2 5.6 -14.5 12.6 -14.5 Z"
+          fill="none"
+          stroke="var(--sb-gold)"
+          strokeWidth="0.8"
+          strokeDasharray="2.6 2"
+          opacity="0.8"
+        />
+        {/* Neck and shoulders, in two runs that tuck under the head outline
+            and leave the frame at the bottom edge. A guest who fills this is
+            standing at the distance the prompt asks the model to render:
+            waist-up, whole head, headroom to spare. */}
+        <path
+          d="M6 100
+             C 6 78 12 66 22.2 53.5
+             c 2.4 -3 3.4 -4 3.4 -6.5
+             V 40
+             M 34.4 40
+             v 7
+             c 0 2.5 1 3.5 3.4 6.5
+             C 48 66 54 78 54 100"
+          fill="none"
+          stroke="var(--sb-gold)"
+          strokeWidth="0.8"
+          strokeDasharray="2.6 2"
+          strokeLinecap="round"
+          opacity="0.8"
+        />
+      </svg>
     </div>
   );
 }
