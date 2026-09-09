@@ -11,12 +11,19 @@ import { defaultPreset } from "./seed";
  * with is showing placeholder data, and a deploy that changes those options is
  * meant to reach it.
  *
- * The guard is deliberately strict: the swap happens only when all three
- * catalogues are still *exactly* as they shipped, field for field. Change one
- * prompt, rename one option, delete one scene, and the preset stops matching
- * and is never touched again — the operator has made it theirs. Nothing
- * outside the three catalogues is read or written either way, so branding,
- * form fields, generation settings and retention survive regardless.
+ * The guard is strict about authored content: change one prompt, rename one
+ * option, add or delete one, and the preset stops matching and is never
+ * touched again. Nothing outside the three catalogues is read or written
+ * either way, so branding, form fields, generation settings and retention
+ * survive regardless.
+ *
+ * It deliberately ignores `imageUrl`. A reference image is bound to the option
+ * it was uploaded for, and this swap retires those options outright — there is
+ * no `scene-neon-city` afterwards for its picture to belong to, under any
+ * policy. Treating an upload as authored content would therefore not preserve
+ * it; it would only pin the booth to a catalogue nobody chose. So an unedited
+ * demo option is still an unedited demo option with a picture on it, and the
+ * picture goes with the option.
  */
 
 /** The catalogue shipped before scenes carried their own wardrobe. */
@@ -144,13 +151,15 @@ const SUPERSEDED: Pick<Preset, "scenes" | "poses" | "treatments"> = {
   ]
 };
 
-/** Every field of a catalogue entry, so a single edited prompt blocks the swap. */
+/**
+ * Every authored field of a catalogue entry, so a single edited prompt blocks
+ * the swap. `imageUrl` is excluded on purpose — see the note above.
+ */
 function sameOption(option: BoothOption, shipped: BoothOption): boolean {
   return (
     option.id === shipped.id &&
     option.label === shipped.label &&
     option.prompt === shipped.prompt &&
-    option.imageUrl === shipped.imageUrl &&
     option.useAsReference === shipped.useAsReference &&
     option.enabled === shipped.enabled
   );
