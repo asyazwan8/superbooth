@@ -284,7 +284,8 @@ function BrandingTab({
               color: "var(--text-muted)",
             }}
           >
-            Shown on the idle screen. Leave empty to use the Superbooth wordmark.
+            Shown on the idle screen and while a portrait renders. Leave empty to
+            use the Superbooth wordmark.
           </p>
           <ImageUploadField
             value={branding.logoUrl}
