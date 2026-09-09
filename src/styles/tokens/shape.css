@@ -1,0 +1,17 @@
+:root {
+  /* Corners are square by intent. Radius is the exception, not the default. */
+  --radius-0: 0px;
+  --radius-sm: 3px;   /* inputs, chips */
+  --radius-pill: 999px; /* the shutter ring and progress bars only */
+
+  --border-hair: 2px;
+  --border-hard: 3px;   /* the house border */
+  --border-heavy: 5px;  /* selected states, hero slabs */
+
+  /* Hard offset shadows. No blur, ever. */
+  --shadow-slam: 6px 6px 0 var(--sb-ink);
+  --shadow-slam-lg: 10px 10px 0 var(--sb-ink);
+  --shadow-slam-pink: 6px 6px 0 var(--sb-pink);
+  --shadow-slam-press: 2px 2px 0 var(--sb-ink);
+  --shadow-inset-hard: inset 0 0 0 var(--border-hard) var(--sb-ink);
+}

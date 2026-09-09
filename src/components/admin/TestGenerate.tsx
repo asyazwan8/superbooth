@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRef, useState } from "react";
-import { Button, Card, Select } from "@/components/admin/ui";
+import { Button, Card, SectionTitle, Select } from "@/components/admin/ui";
 import { estimateCostUsd } from "@/lib/fal/prompt";
 import type { Preset } from "@/lib/schema";
 
@@ -100,45 +100,111 @@ export function TestGenerate({ preset, dirty }: { preset: Preset; dirty: boolean
   const busy = state === "running" || state === "uploading";
 
   return (
-    <Card className="space-y-3 p-4">
+    <Card
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "var(--space-3)",
+        padding: "var(--space-4)",
+      }}
+    >
       <div>
-        <h3 className="text-sm font-semibold text-ink-100">Test a generation</h3>
-        <p className="mt-0.5 text-xs text-ink-500">
+        <SectionTitle>Test a generation</SectionTitle>
+        {/* The cost sits next to the button that spends it, not in a doc: an
+            operator should never learn the price after the charge. */}
+        <p
+          style={{
+            margin: "var(--space-3) 0 0",
+            font: "var(--type-meta)",
+            fontSize: 12,
+            color: "var(--text-muted)",
+          }}
+        >
           One real image, about ${estimateCostUsd(1, preset.generation.resolution).toFixed(2)}.
         </p>
       </div>
 
       {dirty ? (
-        <p className="rounded-lg bg-warn/10 px-3 py-2 text-xs text-warn">
+        <p
+          style={{
+            margin: 0,
+            padding: "8px 12px",
+            background: "var(--sb-gold)",
+            color: "var(--sb-ink)",
+            border: "var(--border-hair) solid var(--line-hard)",
+            font: "var(--type-body-sm)",
+          }}
+        >
           Save your changes first — the test runs against the saved preset.
         </p>
       ) : null}
 
-      <div className="relative aspect-[9/16] overflow-hidden rounded-xl border border-dashed border-ink-700 bg-ink-850">
+      <div
+        style={{
+          position: "relative",
+          aspectRatio: "9 / 16",
+          overflow: "hidden",
+          background: "var(--surface-panel-sunk)",
+          border: "var(--border-hard) dashed var(--line-hard)",
+        }}
+      >
         {result ? (
-          <Image src={result} alt="Test result" fill className="object-cover" unoptimized />
+          <Image src={result} alt="Test result" fill style={{ objectFit: "cover" }} unoptimized />
         ) : photoUrl ? (
-          <Image src={photoUrl} alt="Test photo" fill className="object-cover opacity-50" unoptimized />
+          <Image
+            src={photoUrl}
+            alt="Test photo"
+            fill
+            style={{ objectFit: "cover", opacity: 0.5 }}
+            unoptimized
+          />
         ) : null}
 
         {state === "running" ? (
-          <span className="absolute inset-0 flex items-center justify-center bg-ink-950/70 text-xs text-ink-300">
+          <span
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "grid",
+              placeItems: "center",
+              background: "var(--surface-scrim)",
+              color: "var(--sb-gold)",
+              font: "var(--type-label)",
+              letterSpacing: "var(--tracking-label)",
+              textTransform: "uppercase",
+            }}
+          >
             Generating…
           </span>
         ) : null}
         {!photoUrl && !result ? (
-          <span className="absolute inset-0 flex items-center justify-center text-xs text-ink-600">
+          <span
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "grid",
+              placeItems: "center",
+              font: "var(--type-label)",
+              letterSpacing: "var(--tracking-label)",
+              textTransform: "uppercase",
+              color: "var(--text-muted)",
+            }}
+          >
             Upload a test photo
           </span>
         ) : null}
       </div>
 
-      <Button onClick={() => input.current?.click()} disabled={busy} className="w-full">
+      <Button onClick={() => input.current?.click()} disabled={busy} full>
         {photoUrl ? "Change photo" : "Choose photo"}
       </Button>
 
-      <div className="grid gap-2">
-        <Select value={sceneId} onChange={(event) => setSceneId(event.target.value)}>
+      <div style={{ display: "grid", gap: "var(--space-2)" }}>
+        <Select
+          aria-label="Scene to test"
+          value={sceneId}
+          onChange={(event) => setSceneId(event.target.value)}
+        >
           <option value="">Scene — as configured</option>
           {preset.scenes.map((option) => (
             <option key={option.id} value={option.id}>
@@ -146,7 +212,11 @@ export function TestGenerate({ preset, dirty }: { preset: Preset; dirty: boolean
             </option>
           ))}
         </Select>
-        <Select value={poseId} onChange={(event) => setPoseId(event.target.value)}>
+        <Select
+          aria-label="Look to test"
+          value={poseId}
+          onChange={(event) => setPoseId(event.target.value)}
+        >
           <option value="">Look — as configured</option>
           {preset.poses.map((option) => (
             <option key={option.id} value={option.id}>
@@ -154,7 +224,11 @@ export function TestGenerate({ preset, dirty }: { preset: Preset; dirty: boolean
             </option>
           ))}
         </Select>
-        <Select value={treatmentId} onChange={(event) => setTreatmentId(event.target.value)}>
+        <Select
+          aria-label="Style to test"
+          value={treatmentId}
+          onChange={(event) => setTreatmentId(event.target.value)}
+        >
           <option value="">Style — as configured</option>
           {preset.treatments.map((option) => (
             <option key={option.id} value={option.id}>
@@ -164,23 +238,54 @@ export function TestGenerate({ preset, dirty }: { preset: Preset; dirty: boolean
         </Select>
       </div>
 
-      <Button tone="primary" onClick={run} disabled={!photoUrl || busy || dirty} className="w-full">
+      <Button tone="primary" onClick={run} disabled={!photoUrl || busy || dirty} full>
         {state === "running" ? "Generating…" : "Run test"}
       </Button>
 
-      {error ? <p className="text-xs text-danger">{error}</p> : null}
+      {error ? (
+        <p style={{ margin: 0, font: "var(--type-meta)", fontSize: 12, color: "var(--state-danger)" }}>
+          {error}
+        </p>
+      ) : null}
 
       {prompt ? (
         <div>
           <button
             type="button"
             onClick={() => setShowPrompt((open) => !open)}
-            className="text-xs text-ink-400 underline underline-offset-4 hover:text-ink-100"
+            className="sb-hover"
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              font: "var(--type-label)",
+              letterSpacing: "var(--tracking-label)",
+              textTransform: "uppercase",
+              color: "var(--text-strong)",
+              textDecoration: "underline",
+              textDecorationColor: "var(--sb-pink)",
+              textUnderlineOffset: 4,
+            }}
           >
             {showPrompt ? "Hide" : "Show"} the prompt that was sent
           </button>
           {showPrompt ? (
-            <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-ink-950 p-3 text-[11px] leading-relaxed text-ink-400">
+            <pre
+              style={{
+                margin: "var(--space-2) 0 0",
+                maxHeight: 256,
+                overflow: "auto",
+                whiteSpace: "pre-wrap",
+                padding: "var(--space-3)",
+                background: "var(--sb-ink)",
+                color: "var(--sb-paper-2)",
+                border: "var(--border-hair) solid var(--line-hard)",
+                font: "var(--type-meta)",
+                fontSize: 11,
+                lineHeight: 1.6,
+              }}
+            >
               {prompt}
             </pre>
           ) : null}
@@ -191,7 +296,7 @@ export function TestGenerate({ preset, dirty }: { preset: Preset; dirty: boolean
         ref={input}
         type="file"
         accept="image/png,image/jpeg,image/webp"
-        className="hidden"
+        hidden
         onChange={(event) => {
           const file = event.target.files?.[0];
           if (file) void upload(file);

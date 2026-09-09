@@ -1,23 +1,31 @@
 "use client";
 
 import { useEffect } from "react";
+import { BoothFrame, type StageGround } from "@/components/ds/booth";
 
 /**
  * The 9:16 stage every kiosk screen renders inside.
  *
- * The booth targets a portrait 9:16 display, but it also has to look right on
- * an operator's laptop during setup, so the stage is fitted to the viewport
- * and letterboxed rather than stretched. The preset's accent colour is applied
- * as a CSS variable here, which is what lets an event rebrand the whole booth
- * without touching a stylesheet.
+ * `BoothFrame` does the letterboxing and the container-query context; this
+ * wrapper adds the two things that are the app's business rather than the
+ * design system's — marking the body as a kiosk (which is what disables
+ * text selection, callouts and overscroll in `tokens/base.css`) and exposing
+ * the preset's accent to anything that wants it.
+ *
+ * The accent deliberately does not repaint the booth chrome. The design
+ * system's pairings are contrast-checked; an operator picking a pale accent
+ * an hour before doors open should not be able to make the primary button
+ * unreadable on a screen nobody is watching.
  */
 export function KioskFrame({
   accent,
   accentSoft,
+  ground = "stage",
   children,
 }: {
   accent: string;
   accentSoft: string;
+  ground?: StageGround;
   children: React.ReactNode;
 }) {
   useEffect(() => {
@@ -28,23 +36,13 @@ export function KioskFrame({
   }, []);
 
   return (
-    <div
-      className="fixed inset-0 flex items-center justify-center bg-black"
+    <BoothFrame
+      ground={ground}
       style={
         { "--sb-accent": accent, "--sb-accent-soft": accentSoft } as React.CSSProperties
       }
     >
-      {/* A container query context: the stage is letterboxed, so its width is
-          not the viewport width and type must scale against the stage. */}
-      <div
-        className="@container relative h-full w-full overflow-hidden bg-ink-950"
-        style={{
-          maxWidth: "min(100vw, calc(100dvh * 9 / 16))",
-          maxHeight: "min(100dvh, calc(100vw * 16 / 9))",
-        }}
-      >
-        {children}
-      </div>
-    </div>
+      {children}
+    </BoothFrame>
   );
 }

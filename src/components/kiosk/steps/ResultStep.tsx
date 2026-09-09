@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { BigButton } from "@/components/kiosk/BigButton";
+import { QrPanel } from "@/components/ds/booth";
+import { Button } from "@/components/ds/core";
 
 /**
  * The payoff screen: the finished portrait and the QR that takes it home.
@@ -45,39 +46,55 @@ export function ResultStep({
   }, []);
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="relative flex-1 overflow-hidden px-6 pt-6">
-        <div className="relative h-full w-full overflow-hidden rounded-3xl sb-hairline">
-          <Image
-            src={finalUrl}
-            alt="Your finished portrait"
-            fill
-            sizes="100vw"
-            className="object-cover"
-            unoptimized
-            priority
-          />
-        </div>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <div
+        style={{
+          position: "relative",
+          flex: 1,
+          // Without this the photo refuses to shrink below its content and
+          // pushes the footer off a short stage — an operator's laptop, or a
+          // kiosk in a browser with chrome.
+          minHeight: 0,
+          overflow: "hidden",
+          margin: "var(--space-6) var(--booth-gutter) 0",
+          // Paper, not the house ink rule: these three screens sit on the ink
+          // stage, where a black edge round a dark photo is no edge at all.
+          border: "var(--border-heavy) solid var(--sb-paper)",
+          background: "var(--sb-ink-2)",
+        }}
+      >
+        <Image
+          src={finalUrl}
+          alt="Your finished portrait"
+          fill
+          sizes="100vw"
+          style={{ objectFit: "cover" }}
+          unoptimized
+          priority
+        />
       </div>
 
-      <div className="shrink-0 px-6 pt-5">
-        <div className="flex items-center gap-5 rounded-3xl bg-ink-850 p-5 sb-hairline">
-          <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-2xl bg-white p-1.5">
-            <Image src={qrDataUrl} alt="QR code to download your photo" fill className="object-contain" unoptimized />
-          </div>
-          <div className="min-w-0">
-            <p className="font-display text-xl font-semibold text-ink-100">Scan to download</p>
-            <p className="mt-1 text-sm text-ink-400">Point your phone camera at the code.</p>
-            <p className="mt-2 truncate text-xs text-ink-600">{shareUrl}</p>
-          </div>
-        </div>
+      <div style={{ flexShrink: 0, padding: "var(--space-6) var(--booth-gutter) 0" }}>
+        <QrPanel qrSrc={qrDataUrl} shareUrl={shareUrl} />
       </div>
 
-      <footer className="shrink-0 px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4">
-        <BigButton className="w-full" onClick={onDone}>
+      <footer
+        style={{
+          flexShrink: 0,
+          padding: "var(--space-5) var(--booth-gutter) var(--space-8)",
+        }}
+      >
+        <Button full onClick={onDone}>
           Done
-        </BigButton>
-        <p className="mt-3 text-center text-sm text-ink-600">
+        </Button>
+        <p
+          style={{
+            margin: "var(--space-4) 0 0",
+            textAlign: "center",
+            font: "var(--type-meta)",
+            color: "var(--text-invert-muted)",
+          }}
+        >
           Returning to the start in {remaining}s
         </p>
       </footer>

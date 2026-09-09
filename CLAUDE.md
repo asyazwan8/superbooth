@@ -27,6 +27,16 @@ one flagged so far has been a genuine bug rather than a false positive.
 
 ## Conventions that matter
 
+**Style against the tokens, inline.** `src/styles/tokens` is the design
+system's, imported unchanged — never edit those files to change an app screen.
+`src/components/ds` holds the components built on them (`core`, `booth`,
+`dashboard`); screens compose those and style the gaps inline against the same
+custom properties. There is no utility framework, and adding one would put two
+idioms in competition over the same colour. The three rules that carry the
+brand: square corners, a 3px ink border, and depth as a hard zero-blur offset
+shadow that collapses on press. The booth is 64px targets; the backend is 40px
+and the only place hover exists.
+
 **Add drivers, not branches.** Image generation and persistence each sit behind
 an interface with a production and a local driver
 (`lib/fal/provider.ts`, `lib/db/types.ts`). Route handlers only ever see the
@@ -61,6 +71,11 @@ the server logs.
   from stored URLs has already caused two bugs.
 - **`FIREBASE_PRIVATE_KEY` needs literal `\n` and surrounding quotes.**
   `lib/env.ts` converts them back.
+- **Admin `Field` is a `<label>`, the design system's `Field` is a `<div>`.**
+  The design system's is for content that is not an input. Route a backend
+  input through `components/admin/ui`'s `Field` or it loses its accessible
+  name, and six E2E tests that find controls by label will fail.
+
 - **Camera work needs HTTPS.** `getUserMedia` is unavailable on plain `http://`
   outside localhost, so a LAN IP will not work on the booth device.
 - **E2E tests share one dev server and run serially.** Tests that create presets

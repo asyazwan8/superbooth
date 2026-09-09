@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { BigButton } from "@/components/kiosk/BigButton";
-import { StepHeader } from "@/components/kiosk/StepChrome";
+import { StepHeader } from "@/components/ds/booth";
+import { Button } from "@/components/ds/core";
 
 /**
  * Pick one of the generated variants.
@@ -28,50 +28,96 @@ export function PickStep({
   const [selected, setSelected] = useState(0);
 
   return (
-    <div className="flex h-full flex-col">
-      <StepHeader title="Pick your favourite" subtitle="Tap to compare, then confirm." />
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <StepHeader
+        title="Pick your favourite"
+        subtitle="Tap to compare, then confirm."
+        tone="purple"
+      />
 
-      <div className="relative flex-1 overflow-hidden px-6">
-        <div className="relative h-full w-full overflow-hidden rounded-3xl sb-hairline">
-          <Image
-            key={images[selected]}
-            src={images[selected]}
-            alt={`Option ${selected + 1}`}
-            fill
-            sizes="100vw"
-            className="object-cover"
-            unoptimized
-            priority
-          />
-        </div>
+      <div
+        style={{
+          position: "relative",
+          flex: 1,
+          // Without this the photo refuses to shrink below its content and
+          // pushes the footer off a short stage — an operator's laptop, or a
+          // kiosk in a browser with chrome.
+          minHeight: 0,
+          overflow: "hidden",
+          margin: "0 var(--booth-gutter)",
+          // Paper, not the house ink rule: these three screens sit on the ink
+          // stage, where a black edge round a dark photo is no edge at all.
+          border: "var(--border-heavy) solid var(--sb-paper)",
+          background: "var(--sb-ink-2)",
+        }}
+      >
+        <Image
+          key={images[selected]}
+          src={images[selected]}
+          alt={`Option ${selected + 1}`}
+          fill
+          sizes="100vw"
+          style={{ objectFit: "cover" }}
+          unoptimized
+          priority
+        />
       </div>
 
-      <div className="shrink-0 px-6 pt-4">
-        <div className="flex justify-center gap-3">
-          {images.map((image, index) => (
+      <div
+        style={{
+          flexShrink: 0,
+          display: "flex",
+          justifyContent: "center",
+          gap: "var(--space-3)",
+          padding: "var(--space-4) var(--booth-gutter) 0",
+        }}
+      >
+        {images.map((image, index) => {
+          const on = index === selected;
+          return (
             <button
               key={image}
               type="button"
               onClick={() => setSelected(index)}
               aria-label={`Show option ${index + 1}`}
-              aria-pressed={index === selected}
-              className={`relative h-24 w-16 overflow-hidden rounded-xl transition
-                ${index === selected ? "ring-3 ring-accent" : "opacity-55 sb-hairline"}`}
+              aria-pressed={on}
+              style={{
+                position: "relative",
+                width: 68,
+                height: 104,
+                padding: 0,
+                cursor: "pointer",
+                overflow: "hidden",
+                background: "var(--sb-ink-3)",
+                border: `${on ? "var(--border-heavy)" : "var(--border-hard)"} solid var(--line-hard)`,
+                boxShadow: on ? "var(--shadow-slam)" : "none",
+                opacity: on ? 1 : 0.55,
+                transform: on ? "translate(-2px, -2px)" : "none",
+                transition: "all var(--dur-instant) var(--ease-snap)",
+              }}
             >
-              <Image src={image} alt="" fill sizes="64px" className="object-cover" unoptimized />
+              <Image src={image} alt="" fill sizes="68px" style={{ objectFit: "cover" }} unoptimized />
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
-      <footer className="shrink-0 space-y-3 px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5">
-        <BigButton className="w-full" onClick={() => onConfirm(selected)} disabled={busy}>
+      <footer
+        style={{
+          flexShrink: 0,
+          display: "flex",
+          flexDirection: "column",
+          gap: "var(--space-3)",
+          padding: "var(--space-4) var(--booth-gutter) var(--space-6)",
+        }}
+      >
+        <Button full onClick={() => onConfirm(selected)} disabled={busy}>
           {busy ? "Preparing your download…" : "Use this one"}
-        </BigButton>
+        </Button>
         {canRegenerate ? (
-          <BigButton variant="ghost" className="w-full" onClick={onRegenerate} disabled={busy}>
+          <Button full tone="ghost" onClick={onRegenerate} disabled={busy}>
             Try again
-          </BigButton>
+          </Button>
         ) : null}
       </footer>
     </div>

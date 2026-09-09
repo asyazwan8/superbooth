@@ -30,7 +30,7 @@ idle → details & consent → scene → look → style → capture → review
 
 Scene, look and style each disappear from the flow when the operator pins them
 to a fixed choice — or when only one option is enabled. Everything else is
-configured per event in the backend: logo, colours, which fields to collect,
+configured per event in the backend: logo, accent colour, which fields to collect,
 consent wording, variant count, resolution, retries, idle timeout and retention.
 
 ---
@@ -57,6 +57,15 @@ E2E-tests with no credentials at all.
 **Nothing reaches Firestore from a browser.** `firestore.rules` denies all
 direct access; every read and write goes through a route handler. One place
 owns validation, the admin allowlist and PDPA handling.
+
+**One design system, two scales.** `src/styles/tokens` holds the Superbooth
+tokens verbatim and `src/components/ds` the components built on them — square
+corners, a 3px ink border, depth as a hard zero-blur offset shadow, and the
+-7deg lean taken off the Super! logo. The booth is 64px targets and one
+decision per screen; the backend is the same palette at 40px, dense, and the
+only place hover states exist. There is no utility framework: components style
+themselves inline against the custom properties, which is the design system's
+own idiom.
 
 **Identity preservation is the prompt's first instruction.** Everything else
 about a photobooth output can be a little off and still delight; a guest who
@@ -93,13 +102,15 @@ src/
     gallery/            second-screen photo wall
     api/                every server route
   components/
+    ds/                 design-system components: core, booth, dashboard
     kiosk/              9:16 touch UI and its steps
-    admin/              backend UI, including the chart primitives
+    admin/              backend UI, built on the dashboard components
   lib/
     fal/                provider interface, real + mock drivers, prompt builder
     db/                 repository interface, Firestore + local drivers, seed
     booth/              step machine and capture helpers
     image/              overlay compositing
+  styles/tokens/        the design system's tokens, imported unchanged
 tests/                  unit tests
 e2e/                    Playwright specs
 ```

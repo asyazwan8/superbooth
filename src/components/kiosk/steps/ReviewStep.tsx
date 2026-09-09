@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { BigButton } from "@/components/kiosk/BigButton";
-import { StepDots, StepFooter, StepHeader } from "@/components/kiosk/StepChrome";
+import { StepDots, StepFooter, StepHeader } from "@/components/ds/booth";
+import { Button } from "@/components/ds/core";
 
 /**
  * Confirm the capture before spending a generation on it.
@@ -29,27 +29,55 @@ export function ReviewStep({
   dotsCurrent: number;
 }) {
   return (
-    <div className="flex h-full flex-col">
-      <StepHeader title="Happy with this?" subtitle="You can retake it as many times as you like." />
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <StepHeader
+        title="Happy with this?"
+        subtitle="You can retake it as many times as you like."
+        tone="paper"
+      />
 
-      <div className="relative flex-1 overflow-hidden px-6 pb-4">
-        <div className="relative h-full w-full overflow-hidden rounded-3xl sb-hairline">
-          {/* A capture is a local data URL, so next/image optimisation is skipped. */}
-          <Image src={photo} alt="Your photo" fill sizes="100vw" className="object-cover" unoptimized />
-        </div>
+      <div
+        style={{
+          position: "relative",
+          flex: 1,
+          // Without this the photo refuses to shrink below its content and
+          // pushes the footer off a short stage — an operator's laptop, or a
+          // kiosk in a browser with chrome.
+          minHeight: 0,
+          overflow: "hidden",
+          margin: "0 var(--booth-gutter)",
+          border: "var(--border-heavy) solid var(--line-hard)",
+          boxShadow: "var(--shadow-slam)",
+          background: "var(--sb-ink-2)",
+        }}
+      >
+        {/* A capture is a local data URL, so next/image optimisation is skipped. */}
+        <Image
+          src={photo}
+          alt="Your photo"
+          fill
+          sizes="100vw"
+          style={{ objectFit: "cover" }}
+          unoptimized
+        />
       </div>
 
       <StepFooter
         onBack={onBack}
         dots={<StepDots total={dotsTotal} current={dotsCurrent} />}
         action={
-          <div className="flex gap-3">
-            <BigButton variant="secondary" onClick={onRetake} disabled={busy} className="flex-1">
+          <div style={{ display: "flex", gap: "var(--space-3)" }}>
+            <Button
+              tone="quiet"
+              onClick={onRetake}
+              disabled={busy}
+              style={{ flex: 1 }}
+            >
               Retake
-            </BigButton>
-            <BigButton onClick={onConfirm} disabled={busy} className="flex-[1.4]">
+            </Button>
+            <Button onClick={onConfirm} disabled={busy} style={{ flex: 1.4 }}>
               {busy ? "Sending…" : "Use this photo"}
-            </BigButton>
+            </Button>
           </div>
         }
       />

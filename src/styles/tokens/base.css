@@ -1,0 +1,38 @@
+/* Minimal resets. The design system does not ship layout classes. */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--surface-stage);
+  color: var(--text-invert);
+  font: var(--type-body);
+  -webkit-font-smoothing: antialiased;
+  text-wrap: pretty;
+}
+
+a {
+  color: var(--sb-pink);
+  text-decoration: underline;
+  text-decoration-thickness: 3px;
+  text-underline-offset: 3px;
+}
+a:hover { color: var(--sb-green); }
+
+:focus-visible {
+  outline: var(--border-hard) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Kiosk hardening, carried over from the app: a guest touchscreen must not
+   scroll-bounce, select text, or open a context menu on long-press. */
+body[data-kiosk="true"] {
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+}
+body[data-kiosk="true"] input,
+body[data-kiosk="true"] textarea { -webkit-user-select: text; user-select: text; }

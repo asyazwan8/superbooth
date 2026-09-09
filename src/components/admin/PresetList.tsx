@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button, Card } from "@/components/admin/ui";
+import { Button, Card, ErrorNote, PageHeader } from "@/components/admin/ui";
+import { Badge } from "@/components/ds/core";
 import type { Preset } from "@/lib/schema";
 
 /**
@@ -51,50 +52,65 @@ export function PresetList({ presets }: { presets: Preset[] }) {
     });
 
   return (
-    <div className="space-y-6">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-semibold text-ink-100">Events</h1>
-          <p className="mt-1 text-sm text-ink-400">
-            The live event is what the booth shows. Everything else is a draft.
-          </p>
-        </div>
-        <Button tone="primary" onClick={() => create()} disabled={busy !== null}>
-          New event
-        </Button>
-      </header>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
+      <PageHeader
+        title="Events"
+        subtitle="The live event is what the booth shows. Everything else is a draft."
+        action={
+          <Button tone="primary" onClick={() => create()} disabled={busy !== null}>
+            New event
+          </Button>
+        }
+      />
 
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
+      {error ? <ErrorNote>{error}</ErrorNote> : null}
 
-      <div className="grid gap-3">
+      <div style={{ display: "grid", gap: "var(--space-3)" }}>
         {presets.map((preset) => (
           <Card
             key={preset.id}
             data-testid="preset-row"
-            className="flex items-center gap-4 p-4"
+            ground={preset.isActive ? "gold" : "paper"}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "var(--space-4)",
+              padding: "var(--space-4)",
+            }}
           >
-            <span
-              className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                preset.isActive ? "bg-positive shadow-[0_0_12px] shadow-positive/60" : "bg-ink-700"
-              }`}
-              aria-hidden="true"
-            />
-
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
+            <div style={{ minWidth: 220, flex: 1 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "var(--space-3)",
+                }}
+              >
                 <Link
                   href={`/admin/presets/${preset.id}`}
-                  className="truncate font-display text-base font-semibold text-ink-100 hover:text-accent"
+                  className="sb-hover"
+                  style={{
+                    color: "inherit",
+                    textDecoration: "none",
+                    fontFamily: "var(--font-display)",
+                    fontSize: 22,
+                    lineHeight: 1,
+                    textTransform: "uppercase",
+                  }}
                 >
                   {preset.name}
                 </Link>
-                {preset.isActive ? (
-                  <span className="rounded-full bg-positive/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-positive">
-                    Live
-                  </span>
-                ) : null}
+                {preset.isActive ? <Badge tone="invert">Live</Badge> : null}
               </div>
-              <p className="mt-0.5 truncate text-xs text-ink-500">
+              <p
+                style={{
+                  margin: "var(--space-2) 0 0",
+                  font: "var(--type-meta)",
+                  fontSize: 12,
+                  opacity: 0.75,
+                }}
+              >
                 {preset.scenes.length} scenes · {preset.poses.length} looks ·{" "}
                 {preset.treatments.length} styles · {preset.generation.variants} variant
                 {preset.generation.variants === 1 ? "" : "s"} at {preset.generation.resolution} ·
@@ -102,7 +118,14 @@ export function PresetList({ presets }: { presets: Preset[] }) {
               </p>
             </div>
 
-            <div className="flex shrink-0 items-center gap-2">
+            <div
+              style={{
+                display: "flex",
+                flexShrink: 0,
+                alignItems: "center",
+                gap: "var(--space-2)",
+              }}
+            >
               {!preset.isActive ? (
                 <Button
                   onClick={() =>
@@ -115,10 +138,10 @@ export function PresetList({ presets }: { presets: Preset[] }) {
                   Go live
                 </Button>
               ) : null}
-              <Button onClick={() => create(preset.id)} disabled={busy !== null}>
+              <Button tone="quiet" onClick={() => create(preset.id)} disabled={busy !== null}>
                 Duplicate
               </Button>
-              <Link href={`/admin/presets/${preset.id}`}>
+              <Link href={`/admin/presets/${preset.id}`} style={{ textDecoration: "none" }}>
                 <Button tone="primary">Edit</Button>
               </Link>
               {!preset.isActive ? (

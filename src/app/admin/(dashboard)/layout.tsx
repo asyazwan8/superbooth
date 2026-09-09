@@ -1,17 +1,16 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignOutButton } from "@/components/admin/SignOutButton";
-import { SuperboothMark } from "@/components/brand/SuperboothLogo";
+import { NavBar } from "@/components/ds/dashboard";
 import { currentAdmin } from "@/lib/auth";
 import { falMockEnabled, firebaseConfigured } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
 const NAV = [
-  { href: "/admin", label: "Events" },
-  { href: "/admin/sessions", label: "Sessions" },
-  { href: "/admin/analytics", label: "Analytics" },
-  { href: "/gallery", label: "Gallery" },
+  { id: "events", href: "/admin", label: "Events" },
+  { id: "sessions", href: "/admin/sessions", label: "Sessions" },
+  { id: "analytics", href: "/admin/analytics", label: "Analytics" },
+  { id: "gallery", href: "/gallery", label: "Gallery" },
 ];
 
 /**
@@ -26,51 +25,41 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const admin = await currentAdmin();
   if (!admin) redirect("/admin/login");
 
+  // Mode flags are load-bearing rather than decorative: an operator needs to
+  // know the booth is mocked, or that nothing is persisted, before they trust
+  // a number on any screen under here.
+  const badges = [
+    falMockEnabled() ? "Demo mode" : null,
+    firebaseConfigured() ? null : "Local storage",
+  ].filter((badge): badge is string => badge !== null);
+
   return (
-    <div className="min-h-dvh bg-ink-950">
-      <header className="sticky top-0 z-20 border-b border-ink-800 bg-ink-950/85 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
-          <Link href="/admin" className="flex items-center gap-2.5">
-            <SuperboothMark className="h-7 w-7 text-accent" />
-            <span className="font-display text-sm font-semibold tracking-[0.16em] text-ink-100">
-              SUPERBOOTH
-            </span>
-          </Link>
-
-          <nav className="flex items-center gap-1">
-            {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="rounded-lg px-3 py-1.5 text-sm text-ink-300 transition hover:bg-ink-850 hover:text-ink-100"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="ml-auto flex items-center gap-3">
-            {falMockEnabled() ? <Badge tone="warn">Demo mode</Badge> : null}
-            {!firebaseConfigured() ? <Badge tone="warn">Local storage</Badge> : null}
-            <span className="hidden text-xs text-ink-500 sm:inline">{admin.email}</span>
-            <SignOutButton />
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
-    </div>
-  );
-}
-
-function Badge({ tone, children }: { tone: "warn"; children: React.ReactNode }) {
-  return (
-    <span
-      className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest ${
-        tone === "warn" ? "bg-warn/15 text-warn" : ""
-      }`}
+    // Two grounds, as everywhere in this system: ink for the shell, paper for
+    // the panels and tables on it. Gold is kept for headings and the active nav
+    // item, so an operator's eye lands on structure rather than decoration.
+    <div
+      style={{
+        minHeight: "100dvh",
+        background: "var(--surface-stage)",
+        color: "var(--text-invert)",
+      }}
     >
-      {children}
-    </span>
+      <NavBar
+        items={NAV}
+        email={admin.email}
+        badges={badges}
+        action={<SignOutButton />}
+      />
+
+      <main
+        style={{
+          maxWidth: 1240,
+          margin: "0 auto",
+          padding: "var(--space-8) var(--space-6) var(--space-12)",
+        }}
+      >
+        {children}
+      </main>
+    </div>
   );
 }

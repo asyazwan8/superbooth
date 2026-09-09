@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { SuperboothMark } from "@/components/brand/SuperboothLogo";
+import { ProgressBar, SuperLogo } from "@/components/ds/booth";
 
 /**
  * The wait.
@@ -42,32 +42,92 @@ export function GeneratingStep({
   const progress = Math.min(94, 100 * (1 - Math.exp(-elapsedMs / 12_000)));
 
   return (
-    <div className="relative flex h-full flex-col items-center justify-center px-10 text-center">
-      <div className="absolute inset-0 sb-glow" />
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "6cqi",
+        padding: "var(--booth-gutter)",
+        textAlign: "center",
+      }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage: "var(--texture-halftone)",
+          backgroundSize: "var(--texture-halftone-size)",
+          opacity: 0.2,
+          animation: "sb-halftone-drift 2s linear infinite",
+        }}
+      />
 
-      <div className="relative">
-        <span className="absolute inset-0 rounded-full border-2 border-accent" style={{ animation: "sb-pulse-ring 2.4s ease-out infinite" }} />
-        <SuperboothMark className="h-20 w-20 text-accent" />
+      <SuperLogo height="26cqi" style={{ position: "relative" }} />
+
+      <div
+        style={{
+          position: "relative",
+          background: "var(--sb-pink)",
+          color: "var(--sb-paper)",
+          border: "var(--border-hard) solid var(--line-hard)",
+          boxShadow: "var(--shadow-slam)",
+          transform: "skewX(var(--skew-brand))",
+          padding: "1.6cqi 5cqi 2.2cqi",
+        }}
+      >
+        <h1
+          style={{
+            margin: 0,
+            transform: "skewX(var(--skew-brand-counter))",
+            fontFamily: "var(--font-display)",
+            fontSize: "7.5cqi",
+            lineHeight: 0.92,
+            textTransform: "uppercase",
+            fontWeight: 400,
+          }}
+        >
+          Creating your portrait
+        </h1>
       </div>
 
-      <h1 className="relative mt-10 font-display text-3xl font-semibold text-ink-100">
-        Creating your portrait
-      </h1>
-
-      <p className="relative mt-3 h-6 text-base text-ink-400 transition-opacity duration-300">
+      <p
+        aria-live="polite"
+        style={{
+          position: "relative",
+          margin: 0,
+          minHeight: "1.6em",
+          font: "var(--type-label)",
+          fontSize: "2.6cqi",
+          letterSpacing: "var(--tracking-label)",
+          textTransform: "uppercase",
+          color: "var(--sb-gold)",
+        }}
+      >
         {queuePosition && queuePosition > 0
           ? `Waiting in queue — position ${queuePosition}`
           : MESSAGES[messageIndex]}
       </p>
 
-      <div className="relative mt-10 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-ink-800">
-        <div
-          className="h-full rounded-full bg-accent transition-[width] duration-700 ease-out"
-          style={{ width: `${progress}%` }}
-        />
+      <div style={{ position: "relative", width: "76%" }}>
+        <ProgressBar value={progress} />
       </div>
 
-      <p className="relative mt-6 text-sm text-ink-600">This usually takes about 20 seconds.</p>
+      <p
+        style={{
+          position: "relative",
+          margin: 0,
+          font: "var(--type-meta)",
+          fontSize: "2.2cqi",
+          color: "var(--text-invert-muted)",
+        }}
+      >
+        This usually takes about 20 seconds.
+      </p>
     </div>
   );
 }

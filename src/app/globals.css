@@ -1,127 +1,84 @@
-@import "tailwindcss";
+/*
+ * Superbooth — the Super! brand over a Persona-style graphic language.
+ *
+ * The token files under src/styles/tokens are the design system's, imported
+ * unchanged so the two stay in sync. Everything below them is app-level: the
+ * font wiring, and the handful of rules that inline styles genuinely cannot
+ * express — media queries and hover.
+ *
+ * There is no utility framework here on purpose. The design system ships no
+ * layout classes and styles its components inline against these custom
+ * properties; running Tailwind alongside that meant two idioms competing to
+ * set the same colour.
+ */
+@import "../styles/tokens/colors.css";
+@import "../styles/tokens/typography.css";
+@import "../styles/tokens/spacing.css";
+@import "../styles/tokens/shape.css";
+@import "../styles/tokens/motion.css";
+@import "../styles/tokens/base.css";
 
 /*
- * Superbooth — dark cinematic.
- *
- * The kiosk lives in dim event lighting, so the ground is near-black and a
- * single vivid accent carries every interactive affordance. Colours are
- * defined once here as Tailwind v4 theme tokens; the accent is additionally
- * overridable at runtime via --sb-accent so an event preset can rebrand the
- * booth without a deploy.
+ * The design system loads Anton, Archivo and Space Mono from Google Fonts at
+ * runtime. next/font self-hosts them instead — no render-blocking request to a
+ * third party, and no layout shift on a booth that has just woken up.
  */
-@theme {
-  --color-ink-950: #050507;
-  --color-ink-900: #0a0a0f;
-  --color-ink-850: #101018;
-  --color-ink-800: #16161f;
-  --color-ink-700: #22222e;
-  --color-ink-600: #33333f;
-  --color-ink-500: #55555f;
-  --color-ink-400: #8b8b96;
-  --color-ink-300: #b6b6c0;
-  --color-ink-200: #d8d8de;
-  --color-ink-100: #f2f2f5;
-
-  --color-accent: var(--sb-accent, #7c5cff);
-  --color-accent-soft: var(--sb-accent-soft, #a08cff);
-
-  --color-positive: #34d399;
-  --color-warn: #fbbf24;
-  --color-danger: #f87171;
-
-  --font-display: var(--font-display), ui-sans-serif, system-ui, sans-serif;
-  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-
-  --radius-booth: 1.75rem;
-
-  --ease-booth: cubic-bezier(0.22, 1, 0.36, 1);
-}
-
 :root {
-  --sb-accent: #7c5cff;
-  --sb-accent-soft: #a08cff;
-  color-scheme: dark;
+  --font-display: var(--font-anton), "Archivo", Impact, sans-serif;
+  --font-ui: var(--font-archivo), "Helvetica Neue", Helvetica, sans-serif;
+  --font-mono: var(--font-space-mono), ui-monospace, monospace;
 }
 
 html,
 body {
-  background: var(--color-ink-950);
-  color: var(--color-ink-100);
+  min-height: 100%;
+}
+
+/* The booth stage is absolutely positioned, so its host must fill the screen. */
+body[data-kiosk="true"] {
+  height: 100%;
 }
 
 /*
- * Kiosk hardening. A guest-facing touchscreen must not scroll-bounce, select
- * text, show a magnifier, or open a context menu on long-press — every one of
- * those reads as "the booth is broken" to a guest and needs staff to recover.
- * Scoped to <body data-kiosk="true"> so /admin and /p keep normal behaviour.
+ * Hover belongs to the operator backend only — the booth is a touchscreen and
+ * a hover-only affordance there is invisible. Guarded by the pointer query so
+ * a tablet running the backend does not get sticky states.
  */
-body[data-kiosk="true"] {
-  overscroll-behavior: none;
-  touch-action: manipulation;
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
-  -webkit-tap-highlight-color: transparent;
-  overflow: hidden;
-}
-
-body[data-kiosk="true"] input,
-body[data-kiosk="true"] textarea {
-  -webkit-user-select: text;
-  user-select: text;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+@media (hover: hover) {
+  .sb-hover:hover:not(:disabled) {
+    filter: brightness(1.08);
+  }
+  .sb-hover-lift:hover:not(:disabled) {
+    transform: translate(-2px, -2px);
+    box-shadow: var(--shadow-slam);
   }
 }
 
-/* Ambient glow behind the attract screen and step headers. */
-@utility sb-glow {
-  background-image: radial-gradient(
-    60% 50% at 50% 40%,
-    color-mix(in oklab, var(--color-accent) 26%, transparent) 0%,
-    transparent 100%
-  );
-}
-
-@utility sb-hairline {
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink-100) 8%, transparent);
-}
-
-@keyframes sb-pulse-ring {
-  0% {
-    transform: scale(1);
-    opacity: 0.55;
-  }
-  100% {
-    transform: scale(1.6);
-    opacity: 0;
+/* Admin layouts collapse to a single column on a narrow screen. */
+@media (max-width: 900px) {
+  .sb-split {
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 }
 
-@keyframes sb-shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
+/* Dense operator tables scroll rather than squash. */
+.sb-scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-@keyframes sb-flash {
-  0% {
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
+/*
+ * Native form controls inherit almost nothing, so the few the backend uses are
+ * normalised here rather than in every call site.
+ */
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+}
+
+input[type="color"] {
+  padding: 2px;
+  cursor: pointer;
 }

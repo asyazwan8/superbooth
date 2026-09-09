@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BigButton } from "@/components/kiosk/BigButton";
-import { StepDots, StepFooter } from "@/components/kiosk/StepChrome";
+import { CountdownDigit, StepDots, StepFooter } from "@/components/ds/booth";
+import { Button } from "@/components/ds/core";
 import { useCamera } from "@/hooks/useCamera";
 import { captureFrame } from "@/lib/booth/capture";
 
@@ -74,63 +74,150 @@ export function CaptureStep({
   }, [countdown, countdownSec, shoot, state]);
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="relative flex-1 overflow-hidden">
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <div
+        style={{
+          position: "relative",
+          flex: 1,
+          // Without this the photo refuses to shrink below its content and
+          // pushes the footer off a short stage — an operator's laptop, or a
+          // kiosk in a browser with chrome.
+          minHeight: 0,
+          overflow: "hidden",
+          margin: "var(--space-5) var(--booth-gutter) 0",
+          // Paper, not the house ink rule: these three screens sit on the ink
+          // stage, where a black edge round a dark photo is no edge at all.
+          border: "var(--border-heavy) solid var(--sb-paper)",
+          background: "var(--sb-ink-2)",
+        }}
+      >
         <video
           ref={videoRef}
           playsInline
           muted
           autoPlay
-          className="absolute inset-0 h-full w-full object-cover"
-          style={mirror ? { transform: "scaleX(-1)" } : undefined}
+          style={{
+            position: "absolute",
+            inset: 0,
+            height: "100%",
+            width: "100%",
+            objectFit: "cover",
+            transform: mirror ? "scaleX(-1)" : undefined,
+          }}
         />
 
-        {/* Framing guide: a soft vignette plus a head-and-shoulders oval. */}
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute inset-0 bg-[radial-gradient(75%_55%_at_50%_42%,transparent_55%,rgba(0,0,0,0.72)_100%)]" />
-          <div className="absolute left-1/2 top-[30%] h-[34%] w-[62%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border-2 border-white/25" />
+        {/* Framing guide. The oval is a hard ink-and-gold rule rather than a
+            soft overlay: on a bright venue screen a translucent guide is
+            invisible from where the guest is actually standing. */}
+        <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "radial-gradient(75% 55% at 50% 42%, transparent 55%, rgba(13,7,21,0.78) 100%)",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "30%",
+              height: "34%",
+              width: "62%",
+              transform: "translate(-50%, -50%)",
+              borderRadius: "50%",
+              border: "var(--border-hard) dashed var(--sb-gold)",
+              opacity: 0.75,
+            }}
+          />
         </div>
 
         {state !== "ready" ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-ink-950/90 px-10 text-center">
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "var(--space-4)",
+              padding: "var(--booth-gutter)",
+              textAlign: "center",
+              background: "var(--surface-scrim)",
+              color: "var(--text-invert)",
+            }}
+          >
             {state === "starting" ? (
               <>
-                <span className="h-10 w-10 animate-spin rounded-full border-2 border-ink-700 border-t-accent" />
-                <p className="text-ink-300">Waking up the camera…</p>
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 40,
+                    height: 40,
+                    border: "var(--border-hard) solid var(--sb-ink-3)",
+                    borderTopColor: "var(--sb-green)",
+                    borderRadius: "var(--radius-pill)",
+                    animation: "sb-spin 900ms linear infinite",
+                  }}
+                />
+                <p
+                  style={{
+                    margin: 0,
+                    font: "var(--type-label)",
+                    letterSpacing: "var(--tracking-label)",
+                    textTransform: "uppercase",
+                    color: "var(--sb-gold)",
+                  }}
+                >
+                  Waking up the camera…
+                </p>
               </>
             ) : (
               <>
-                <p className="font-display text-2xl text-ink-100">Camera unavailable</p>
-                <p className="text-ink-400">{error}</p>
-                <BigButton variant="secondary" onClick={() => void retry()}>
+                <p
+                  style={{
+                    margin: 0,
+                    padding: "6px 20px 8px",
+                    background: "var(--sb-pink)",
+                    color: "var(--sb-paper)",
+                    border: "var(--border-hard) solid var(--line-hard)",
+                    boxShadow: "var(--shadow-slam)",
+                    transform: "skewX(var(--skew-brand))",
+                    fontFamily: "var(--font-display)",
+                    fontSize: "6cqi",
+                    lineHeight: 1,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  <span style={{ display: "block", transform: "skewX(var(--skew-brand-counter))" }}>
+                    Camera unavailable
+                  </span>
+                </p>
+                <p style={{ margin: 0, font: "var(--type-body)" }}>{error}</p>
+                <Button tone="secondary" onClick={() => void retry()}>
                   Try again
-                </BigButton>
-                <p className="text-sm text-ink-500">Or ask an attendant for help.</p>
+                </Button>
+                <p style={{ margin: 0, font: "var(--type-meta)", opacity: 0.7 }}>
+                  Or ask an attendant for help.
+                </p>
               </>
             )}
           </div>
         ) : null}
 
-        {countdown !== null ? (
-          <div className="absolute inset-0 flex items-center justify-center">
-            {countdown > 0 ? (
-              <span
-                key={countdown}
-                className="font-display text-[9rem] font-bold leading-none text-white drop-shadow-[0_0_40px_rgba(0,0,0,0.6)]"
-                style={{ animation: "sb-pulse-ring 900ms var(--ease-booth)" }}
-              >
-                {countdown}
-              </span>
-            ) : (
-              <span className="font-display text-6xl font-bold text-white">Smile!</span>
-            )}
-          </div>
-        ) : null}
+        {countdown !== null ? <CountdownDigit value={countdown} /> : null}
 
         {flash ? (
           <div
-            className="pointer-events-none absolute inset-0 bg-white"
-            style={{ animation: "sb-flash 500ms ease-out forwards" }}
+            style={{
+              position: "absolute",
+              inset: 0,
+              pointerEvents: "none",
+              background: "var(--sb-paper)",
+              animation: "sb-flash 500ms ease-out forwards",
+            }}
           />
         ) : null}
       </div>
@@ -139,13 +226,13 @@ export function CaptureStep({
         onBack={countdown === null ? onBack : undefined}
         dots={<StepDots total={dotsTotal} current={dotsCurrent} />}
         action={
-          <BigButton
-            className="w-full"
+          <Button
+            full
             onClick={startCountdown}
             disabled={state !== "ready" || countdown !== null}
           >
             {countdown !== null ? "Hold still…" : "Take photo"}
-          </BigButton>
+          </Button>
         }
       />
     </div>

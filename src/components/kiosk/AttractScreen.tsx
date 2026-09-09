@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { AttendantMenu } from "@/components/kiosk/AttendantMenu";
 import { KioskFrame } from "@/components/kiosk/KioskFrame";
-import { SuperboothLogo } from "@/components/brand/SuperboothLogo";
+import { SuperLogo } from "@/components/ds/booth";
+import { Badge } from "@/components/ds/core";
 import { useKioskMode } from "@/hooks/useKioskMode";
 import type { PublicPreset } from "@/lib/schema";
 
@@ -31,59 +31,148 @@ export function AttractScreen({ preset, mock }: { preset: PublicPreset; mock: bo
   }, [engage, router, starting]);
 
   return (
-    <KioskFrame accent={preset.branding.accent} accentSoft={preset.branding.accentSoft}>
+    <KioskFrame
+      ground="purple"
+      accent={preset.branding.accent}
+      accentSoft={preset.branding.accentSoft}
+    >
       <AttendantMenu onReset={() => router.refresh()} />
 
       <button
         type="button"
         onClick={start}
         aria-label={preset.branding.attractSubline}
-        className="relative flex h-full w-full flex-col items-center justify-center gap-16 px-10"
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "7cqi",
+          padding: "var(--booth-gutter)",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          color: "inherit",
+        }}
       >
-        <div className="absolute inset-0 sb-glow" />
+        <span
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            backgroundImage: "var(--texture-halftone)",
+            backgroundSize: "var(--texture-halftone-size)",
+            opacity: 0.28,
+          }}
+        />
 
-        <div className="relative flex flex-col items-center gap-10">
-          {preset.branding.logoUrl ? (
-            <div className="relative h-40 w-64">
-              <Image
-                src={preset.branding.logoUrl}
-                alt=""
-                fill
-                className="object-contain"
-                unoptimized
-                priority
-              />
-            </div>
-          ) : (
-            <SuperboothLogo />
-          )}
+        <SuperLogo
+          src={preset.branding.logoUrl || undefined}
+          height="42cqi"
+          style={{ position: "relative" }}
+        />
 
-          <h1 className="max-w-sm text-center font-display text-4xl font-semibold leading-tight text-ink-100">
+        {/* The headline is a slab that slams in from off-stage: the one piece
+            of motion on the screen, and the reason the booth reads as alive
+            from across a hall. */}
+        <span
+          style={{
+            position: "relative",
+            display: "block",
+            background: "var(--sb-gold)",
+            color: "var(--sb-ink)",
+            border: "var(--border-heavy) solid var(--line-hard)",
+            boxShadow: "var(--shadow-slam-lg)",
+            transform: "skewX(var(--skew-brand))",
+            padding: "2cqi 6cqi 2.6cqi",
+            animation: "sb-slam-in var(--dur-slam) var(--ease-snap) both",
+          }}
+        >
+          <span
+            style={{
+              display: "block",
+              transform: "skewX(var(--skew-brand-counter))",
+              fontFamily: "var(--font-display)",
+              fontSize: "10cqi",
+              lineHeight: 0.88,
+              letterSpacing: "var(--tracking-display)",
+              textTransform: "uppercase",
+              textAlign: "center",
+            }}
+          >
             {preset.branding.attractHeadline}
-          </h1>
-        </div>
+          </span>
+        </span>
 
-        <div className="relative flex flex-col items-center gap-6">
-          <span className="relative flex h-24 w-24 items-center justify-center">
+        <span
+          style={{
+            position: "relative",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "4cqi",
+          }}
+        >
+          <span
+            style={{
+              position: "relative",
+              width: "22cqi",
+              height: "22cqi",
+              display: "grid",
+              placeItems: "center",
+            }}
+          >
             <span
-              className="absolute inset-0 rounded-full border-2 border-accent"
-              style={{ animation: "sb-pulse-ring 2.6s ease-out infinite" }}
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                inset: 0,
+                border: "var(--border-hard) solid var(--sb-pink)",
+                borderRadius: "var(--radius-pill)",
+                animation: "sb-ring-pop 2.2s var(--ease-out-hard) infinite",
+              }}
             />
             <span
-              className="absolute inset-0 rounded-full border-2 border-accent"
-              style={{ animation: "sb-pulse-ring 2.6s ease-out 1.3s infinite" }}
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                inset: 0,
+                border: "var(--border-hard) solid var(--sb-pink)",
+                borderRadius: "var(--radius-pill)",
+                animation: "sb-ring-pop 2.2s var(--ease-out-hard) 1.1s infinite",
+              }}
             />
-            <span className="h-16 w-16 rounded-full bg-accent/20 sb-hairline" />
+            <span
+              aria-hidden="true"
+              style={{
+                width: "13cqi",
+                height: "13cqi",
+                background: "var(--sb-green)",
+                border: "var(--border-hard) solid var(--line-hard)",
+                borderRadius: "var(--radius-pill)",
+              }}
+            />
           </span>
 
-          <span className="text-base uppercase tracking-[0.34em] text-ink-300">
+          <span
+            style={{
+              font: "var(--type-label)",
+              fontSize: "2.4cqi",
+              letterSpacing: "var(--tracking-label-wide)",
+              textTransform: "uppercase",
+              color: "var(--sb-gold)",
+              animation: starting ? undefined : "sb-blink 1.4s steps(1, end) infinite",
+            }}
+          >
             {starting ? "Starting…" : preset.branding.attractSubline}
           </span>
-        </div>
+        </span>
 
         {mock ? (
-          <span className="absolute bottom-6 rounded-full bg-warn/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-warn">
-            Demo mode — no credits are being spent
+          <span style={{ position: "absolute", bottom: "var(--space-6)" }}>
+            <Badge tone="warn">Demo mode &mdash; no credits are being spent</Badge>
           </span>
         ) : null}
       </button>

@@ -1,6 +1,7 @@
 "use client";
 
-import { BigButton } from "@/components/kiosk/BigButton";
+import { Overlay } from "@/components/ds/booth";
+import { Button } from "@/components/ds/core";
 
 /**
  * "Still there?" — shown before an abandoned session is cleared.
@@ -19,26 +20,24 @@ export function IdleOverlay({
   onReset: () => void;
 }) {
   return (
-    <div
-      role="alertdialog"
-      aria-label="Are you still there?"
-      className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-8 bg-ink-950/94 px-10 text-center backdrop-blur-sm"
+    <Overlay
+      title="Still there?"
+      body={
+        <>
+          Starting over in{" "}
+          <span style={{ fontVariantNumeric: "tabular-nums", color: "var(--sb-gold)" }}>
+            {countdown}
+          </span>
+          s
+        </>
+      }
     >
-      <div>
-        <h2 className="font-display text-3xl font-semibold text-ink-100">Still there?</h2>
-        <p className="mt-3 text-ink-400">
-          Starting over in <span className="tabular-nums text-ink-100">{countdown}</span>s
-        </p>
-      </div>
-
-      <div className="w-full space-y-3">
-        <BigButton className="w-full" onClick={onStay}>
-          I&apos;m still here
-        </BigButton>
-        <BigButton variant="ghost" className="w-full" onClick={onReset}>
-          Start over
-        </BigButton>
-      </div>
-    </div>
+      <Button full tone="primary" onClick={onStay}>
+        I&apos;m still here
+      </Button>
+      <Button full tone="quiet" onClick={onReset}>
+        Start over
+      </Button>
+    </Overlay>
   );
 }

@@ -1,0 +1,19 @@
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* Booth-specific: a standing guest, one thumb, a 55" vertical screen. */
+  --booth-gutter: 28px;
+  --booth-stack: 24px;
+  --tap-min: 64px;      /* minimum height of anything tappable in the booth */
+  --tap-min-desk: 40px; /* the operator backend uses a mouse */
+}

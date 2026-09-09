@@ -1,17 +1,30 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Sora } from "next/font/google";
+import { Anton, Archivo, Space_Mono } from "next/font/google";
 import "./globals.css";
 
-const sans = Inter({
+/*
+ * Three faces, no more: Anton carries every display slab, Archivo all UI text
+ * and buttons, Space Mono the labels and system chatter. Self-hosted through
+ * next/font so a booth waking up on venue Wi-Fi is not waiting on Google.
+ */
+const anton = Anton({
   subsets: ["latin"],
-  variable: "--font-sans",
+  weight: "400",
+  variable: "--font-anton",
   display: "swap",
 });
 
-const display = Sora({
+const archivo = Archivo({
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  variable: "--font-display",
+  weight: ["400", "500", "600", "700", "800", "900"],
+  variable: "--font-archivo",
+  display: "swap",
+});
+
+const spaceMono = Space_Mono({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-space-mono",
   display: "swap",
 });
 
@@ -21,7 +34,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#050507",
+  themeColor: "#0d0715",
   // The kiosk runs on a fixed portrait screen; user scaling is a source of
   // stuck-zoom states that need staff to fix.
   width: "device-width",
@@ -33,8 +46,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${sans.variable} ${display.variable}`}>
-      <body className="font-sans antialiased">{children}</body>
+    <html
+      lang="en"
+      className={`${anton.variable} ${archivo.variable} ${spaceMono.variable}`}
+    >
+      <body>{children}</body>
     </html>
   );
 }

@@ -1,8 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/admin/ui";
 
+/**
+ * Sign out. Styled here rather than through the shared admin Button because
+ * it lives on the ink nav bar, where a paper-ground button would shout.
+ */
 export function SignOutButton() {
   const router = useRouter();
 
@@ -13,8 +16,23 @@ export function SignOutButton() {
   };
 
   return (
-    <Button tone="ghost" onClick={signOut}>
+    <button
+      type="button"
+      onClick={signOut}
+      className="sb-hover"
+      style={{
+        minHeight: "var(--tap-min-desk)",
+        padding: "0 var(--space-3)",
+        cursor: "pointer",
+        background: "transparent",
+        color: "var(--sb-pink)",
+        border: "var(--border-hair) solid var(--sb-pink)",
+        font: "var(--type-label)",
+        letterSpacing: "var(--tracking-label)",
+        textTransform: "uppercase",
+      }}
+    >
       Sign out
-    </Button>
+    </button>
   );
 }

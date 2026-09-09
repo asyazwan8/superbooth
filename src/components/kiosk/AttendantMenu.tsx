@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
-import { BigButton } from "@/components/kiosk/BigButton";
+import { Overlay } from "@/components/ds/booth";
+import { Button } from "@/components/ds/core";
 
 /** Taps on the hidden corner needed to open the attendant prompt. */
 const TAP_COUNT = 5;
@@ -69,45 +70,81 @@ export function AttendantMenu({ onReset }: { onReset: () => void }) {
         aria-hidden="true"
         tabIndex={-1}
         onClick={registerTap}
-        className="absolute right-0 top-0 z-50 h-16 w-16 opacity-0"
+        style={{
+          position: "absolute",
+          top: 0,
+          right: 0,
+          zIndex: 50,
+          width: 64,
+          height: 64,
+          opacity: 0,
+          background: "none",
+          border: "none",
+        }}
       />
 
       {open ? (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-ink-950/97 px-10">
-          <h2 className="font-display text-2xl font-semibold text-ink-100">Attendant</h2>
-
-          <input
-            type="password"
-            inputMode="numeric"
-            autoFocus
-            value={pin}
-            onChange={(event) => setPin(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") void unlock();
-            }}
-            placeholder="PIN"
-            className="w-48 rounded-2xl bg-ink-850 px-5 py-4 text-center text-2xl tracking-[0.4em] text-ink-100 sb-hairline focus:outline-none focus:ring-2 focus:ring-accent"
-          />
-          {error ? <p className="text-sm text-danger">{error}</p> : null}
-
-          <div className="w-full space-y-3">
-            <BigButton className="w-full" onClick={unlock} disabled={checking || pin.length === 0}>
+        <div style={{ position: "absolute", inset: 0, zIndex: 50 }}>
+          <Overlay
+            title="Attendant"
+            body={
+              <input
+                type="password"
+                inputMode="numeric"
+                autoFocus
+                value={pin}
+                onChange={(event) => setPin(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void unlock();
+                }}
+                placeholder="PIN"
+                aria-label="Attendant PIN"
+                style={{
+                  width: 220,
+                  padding: "14px 16px",
+                  textAlign: "center",
+                  background: "var(--sb-paper)",
+                  color: "var(--sb-ink)",
+                  border: "var(--border-hard) solid var(--line-hard)",
+                  borderRadius: "var(--radius-0)",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 24,
+                  letterSpacing: "0.4em",
+                }}
+              />
+            }
+          >
+            {error ? (
+              <p
+                role="alert"
+                style={{
+                  margin: 0,
+                  font: "var(--type-label)",
+                  letterSpacing: "var(--tracking-label)",
+                  textTransform: "uppercase",
+                  color: "var(--sb-pink)",
+                }}
+              >
+                {error}
+              </p>
+            ) : null}
+            <Button full onClick={unlock} disabled={checking || pin.length === 0}>
               Open admin
-            </BigButton>
-            <BigButton
-              variant="secondary"
-              className="w-full"
+            </Button>
+            <Button
+              full
+              tone="secondary"
               onClick={() => {
                 setOpen(false);
                 onReset();
               }}
             >
               Reset session
-            </BigButton>
-            <BigButton variant="ghost" className="w-full" onClick={() => setOpen(false)}>
+            </Button>
+            <Button full tone="ghost" onClick={() => setOpen(false)}>
               Cancel
-            </BigButton>
-          </div>
+            </Button>
+          </Overlay>
         </div>
       ) : null}
     </>
