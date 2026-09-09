@@ -32,6 +32,17 @@ export function CaptureStep({
   const { videoRef, state, error, retry } = useCamera();
   const [countdown, setCountdown] = useState<number | null>(null);
   const [flash, setFlash] = useState(false);
+  /**
+   * The stream's own aspect, read once the browser knows it.
+   *
+   * The preview box is 9:16-ish and a phone's camera is not, so filling the
+   * box cropped a landscape frame down to its middle third — the guest saw a
+   * close-up of their own face and could not fit themselves in. Sizing the
+   * video's box to the stream instead shows the entire frame, which is also
+   * exactly what is captured. Starts at 3:4 so the box does not jump on a
+   * device that never reports.
+   */
+  const [aspect, setAspect] = useState(3 / 4);
   const timers = useRef<number[]>([]);
 
   useEffect(
@@ -75,38 +86,60 @@ export function CaptureStep({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      {/*
+        The area reserved for the picture carries no frame of its own: the
+        border belongs to the picture, which is sized to the camera's own
+        aspect. Drawing the frame out here instead left a bordered box with
+        the stream letterboxed inside it, which reads as a broken layout
+        rather than as a photo.
+      */}
       <div
         style={{
-          position: "relative",
           flex: 1,
           // Without this the photo refuses to shrink below its content and
           // pushes the footer off a short stage — an operator's laptop, or a
           // kiosk in a browser with chrome.
           minHeight: 0,
-          overflow: "hidden",
           margin: "var(--space-5) var(--booth-gutter) 0",
-          // Paper, not the house ink rule: these three screens sit on the ink
-          // stage, where a black edge round a dark photo is no edge at all.
-          border: "var(--border-heavy) solid var(--sb-paper)",
-          background: "var(--sb-ink-2)",
+          display: "grid",
+          placeItems: "center",
         }}
       >
-        <video
-          ref={videoRef}
-          playsInline
-          muted
-          autoPlay
+        <div
           style={{
-            position: "absolute",
-            inset: 0,
-            height: "100%",
+            position: "relative",
+            // Fitted to the stream, so `cover` below crops nothing away.
+            aspectRatio: String(aspect),
+            maxWidth: "100%",
+            maxHeight: "100%",
             width: "100%",
-            objectFit: "cover",
-            transform: mirror ? "scaleX(-1)" : undefined,
+            overflow: "hidden",
+            // Paper, not the house ink rule: these three screens sit on the ink
+            // stage, where a black edge round a dark photo is no edge at all.
+            border: "var(--border-heavy) solid var(--sb-paper)",
+            background: "var(--sb-ink-2)",
           }}
-        />
+        >
+          <video
+            ref={videoRef}
+            playsInline
+            muted
+            autoPlay
+            onLoadedMetadata={(event) => {
+              const { videoWidth, videoHeight } = event.currentTarget;
+              if (videoWidth && videoHeight) setAspect(videoWidth / videoHeight);
+            }}
+            style={{
+              position: "absolute",
+              inset: 0,
+              height: "100%",
+              width: "100%",
+              objectFit: "cover",
+              transform: mirror ? "scaleX(-1)" : undefined,
+            }}
+          />
 
-        <FramingGuide />
+          <FramingGuide />
 
         {state !== "ready" ? (
           <div
@@ -195,6 +228,7 @@ export function CaptureStep({
             }}
           />
         ) : null}
+        </div>
       </div>
 
       <StepFooter
@@ -215,20 +249,22 @@ export function CaptureStep({
 }
 
 /**
- * Where to put your face.
+ * Where to stand.
  *
- * An ellipse taller than it is wide, at head proportions: it asks a guest to
- * fill it with their face, which is what sets the distance the prompt then
- * asks the model to render — whole head, headroom, waist-up. Drawn as a hard
- * dashed gold rule over a vignette rather than a translucent overlay, because
- * on a bright venue screen a soft guide is invisible from where the guest is
- * really standing.
+ * Still the vertical oval, but sized for the shot the booth now produces: a
+ * head that fills half the frame is a head-and-shoulders photo, and the model
+ * is being asked for a full-length portrait. Marking the head near the top and
+ * the ground near the bottom tells a guest to step back, which is the only
+ * thing that actually puts their outfit and their shoes in the picture — and
+ * the less of the body the camera sees, the more of it the model invents.
  *
- * SVG rather than a CSS ellipse so the shape is fixed rather than derived
- * from the box: `meet` on a portrait viewBox keeps it the same oval whether
- * it is drawn on the booth's 9:16 preview or the shorter, wider one on an
- * operator's laptop. A percentage-sized ellipse would stretch with the box
- * and stop being a face anywhere but the kiosk.
+ * Drawn as a hard dashed gold rule over a vignette rather than a translucent
+ * overlay, because on a bright venue screen a soft guide is invisible from
+ * where the guest is really standing.
+ *
+ * The viewBox is portrait and fitted with `meet`, so the marks keep their
+ * proportions on any camera: on a wide landscape stream they sit in a narrow
+ * column in the middle, which is exactly where a standing person belongs.
  */
 function FramingGuide() {
   return (
@@ -238,7 +274,7 @@ function FramingGuide() {
           position: "absolute",
           inset: 0,
           background:
-            "radial-gradient(72% 54% at 50% 38%, transparent 58%, rgba(13,7,21,0.78) 100%)",
+            "radial-gradient(78% 70% at 50% 50%, transparent 62%, rgba(13,7,21,0.7) 100%)",
         }}
       />
       <svg
@@ -246,18 +282,38 @@ function FramingGuide() {
         preserveAspectRatio="xMidYMid meet"
         style={{ position: "absolute", inset: 0, height: "100%", width: "100%" }}
       >
-        {/* Sat above centre: a face filling this leaves the shoulders in
-            frame below it rather than cropped at the bottom edge. */}
+        {/* The head, at the height a standing figure's head sits. */}
         <ellipse
           cx="30"
-          cy="38"
-          rx="15"
-          ry="21"
+          cy="14"
+          rx="6.4"
+          ry="9"
           fill="none"
           stroke="var(--sb-gold)"
           strokeWidth="0.8"
           strokeDasharray="2.6 2"
-          opacity="0.8"
+          opacity="0.85"
+        />
+        {/* The ground. A guest who gets their head in the oval and their feet
+            on this line is standing far enough back to be photographed whole. */}
+        <path
+          d="M14 95 H46"
+          fill="none"
+          stroke="var(--sb-gold)"
+          strokeWidth="0.8"
+          strokeDasharray="2.6 2"
+          strokeLinecap="round"
+          opacity="0.85"
+        />
+        {/* Corner ticks marking the standing column, so the two marks read as
+            one frame rather than as two unrelated shapes. */}
+        <path
+          d="M14 88 V95 H21 M46 88 V95 H39"
+          fill="none"
+          stroke="var(--sb-gold)"
+          strokeWidth="0.8"
+          strokeLinecap="round"
+          opacity="0.45"
         />
       </svg>
     </div>

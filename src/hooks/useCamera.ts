@@ -46,10 +46,18 @@ export function useCamera(): UseCameraResult {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "user",
-          // Ask for portrait; a device that only offers landscape returns one,
-          // and the capture crop handles the difference.
-          width: { ideal: 1080 },
-          height: { ideal: 1920 },
+          /*
+           * Width only, and nothing about the aspect ratio.
+           *
+           * Asking for 1080x1920 asked a phone for an aspect its sensor does
+           * not have, and browsers satisfy that by cropping into the frame —
+           * which reads as the camera being zoomed in, and leaves a guest
+           * unable to fit themselves in the shot at arm's length. A single
+           * `ideal` width lets the device pick its own native mode, which is
+           * the widest field of view it has. Framing is this app's job, and
+           * it is done in the preview where a guest can see it.
+           */
+          width: { ideal: 1920 },
         },
         audio: false,
       });
