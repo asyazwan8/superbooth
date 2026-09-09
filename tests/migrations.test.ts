@@ -153,6 +153,25 @@ describe("hasSupersededCatalogue", () => {
     expect(hasSupersededCatalogue(edited)).toBe(false);
   });
 
+  it("still matches when the operator has uploaded a reference image", () => {
+    // The case a live booth was actually in. The swap retires this scene, so
+    // there is nothing for the picture to belong to afterwards either way —
+    // treating the upload as authored content would only pin the booth to a
+    // catalogue nobody chose.
+    const withArt = supersededPreset();
+    withArt.scenes[0] = {
+      ...withArt.scenes[0],
+      imageUrl: "https://cdn.example.com/neon-city.jpg",
+    };
+    expect(hasSupersededCatalogue(withArt)).toBe(true);
+    expect(withShippedCatalogue(withArt).scenes.map((option) => option.label)).toEqual([
+      "Neon",
+      "Space",
+      "Cyberpunk",
+      "Jungle",
+    ]);
+  });
+
   it("leaves a preset alone once an option has been added or removed", () => {
     const trimmed = supersededPreset();
     trimmed.scenes = trimmed.scenes.slice(0, 3);
