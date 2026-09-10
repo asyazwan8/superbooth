@@ -17,6 +17,32 @@ async function fillDetails(page: Page) {
 }
 
 /**
+ * The frame must keep the picture's shape, never the area's.
+ *
+ * Compared against the image's own `naturalWidth/naturalHeight` rather than
+ * anything the test knows in advance, so it holds for a 9:16 render and for a
+ * capture at whatever shape the camera gave. An earlier version of this read
+ * the ratio off the `<video>`, which has already unmounted by the review
+ * screen — so it silently skipped and asserted nothing at all.
+ */
+async function expectFramedWhole(page: Page, alt: string) {
+  const measured = await page.getByAltText(alt).evaluate((node) => {
+    const image = node as HTMLImageElement;
+    const box = image.getBoundingClientRect();
+    return {
+      rendered: box.width / box.height,
+      natural: image.naturalWidth / image.naturalHeight,
+    };
+  });
+
+  expect(measured.natural).toBeGreaterThan(0);
+  // Tolerance covers the border, which `box-sizing: border-box` takes out of
+  // the frame — about a percent, and never the difference between one shape
+  // and another.
+  expect(measured.rendered).toBeCloseTo(measured.natural, 1);
+}
+
+/**
  * Picks a theme and answers every question it asks.
  *
  * How many questions there are is a property of the theme — the superhero asks
@@ -50,6 +76,18 @@ async function shootAndGenerate(page: Page) {
   await expect(page.getByRole("button", { name: "Use this photo" })).toBeVisible({
     timeout: 30_000,
   });
+
+  /*
+   * The frame has to keep the picture's shape, not the area's.
+   *
+   * This one is the tall-and-narrow case: the fake camera is 4:3 landscape and
+   * the picture area is taller than it is wide. An `aspect-ratio` frame gets
+   * this wrong — the max-width clamp resolves the second axis and the ratio is
+   * dropped — so the frame silently takes the area's shape and crops the guest.
+   * Asserting the rendered ratio is what catches that.
+   */
+  await expectFramedWhole(page, "Your photo");
+
   await page.getByRole("button", { name: "Use this photo" }).click();
 
   await expect(page.getByRole("heading", { name: /creating your portrait/i })).toBeVisible();
@@ -59,6 +97,9 @@ async function shootAndGenerate(page: Page) {
 
   await page.getByRole("button", { name: "Use this one" }).click();
   await expect(page.getByText(/scan to download/i)).toBeVisible({ timeout: 45_000 });
+
+  // And the short-and-wide case: the finished portrait is always 9:16.
+  await expectFramedWhole(page, "Your finished portrait");
 }
 
 test("a guest goes from the idle screen to a downloadable photo", async ({ page }) => {

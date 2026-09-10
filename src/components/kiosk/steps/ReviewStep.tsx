@@ -41,6 +41,7 @@ export function ReviewStep({
       <FittedPhoto
         src={photo}
         alt="Your photo"
+        defaultAspect={4 / 3}
         border="var(--border-heavy) solid var(--line-hard)"
         shadow="var(--shadow-slam)"
         areaStyle={{ margin: "0 var(--booth-gutter)" }}

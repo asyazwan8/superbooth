@@ -96,6 +96,34 @@ describe("upgradePresetShape", () => {
     expect(upgraded.flow).toEqual({ theme: { mode: "select", fixedId: null } });
   });
 
+  it("gives the same ids every time, so a kiosk's snapshot stays valid", () => {
+    /*
+     * The upgrade runs on every read and is never written back, so a guest's
+     * journey spans two of them: the booth page issues the ids, and
+     * /api/booth/generate re-reads to resolve what they tapped. If the two
+     * reads disagree the choice is silently dropped.
+     */
+    const readA = presetSchema.parse(upgradePresetShape(storedLegacyPreset()));
+    const readB = presetSchema.parse(upgradePresetShape(storedLegacyPreset()));
+
+    expect(readB.themes.map((theme) => theme.id)).toEqual(readA.themes.map((theme) => theme.id));
+    expect(
+      readB.themes.flatMap((theme) =>
+        theme.customisations.flatMap((slot) => [
+          slot.id,
+          ...slot.options.map((option) => option.id),
+        ]),
+      ),
+    ).toEqual(
+      readA.themes.flatMap((theme) =>
+        theme.customisations.flatMap((slot) => [
+          slot.id,
+          ...slot.options.map((option) => option.id),
+        ]),
+      ),
+    );
+  });
+
   it("carries across everything outside the catalogue", () => {
     const before = storedLegacyPreset();
     const after = presetSchema.parse(upgradePresetShape(before));

@@ -51,17 +51,17 @@ export function ResultStep({
         src={finalUrl}
         alt="Your finished portrait"
         priority
-        areaStyle={{ margin: "var(--space-6) var(--booth-gutter) 0" }}
+        areaStyle={{ margin: "var(--space-4) var(--booth-gutter) 0" }}
       />
 
-      <div style={{ flexShrink: 0, padding: "var(--space-6) var(--booth-gutter) 0" }}>
+      <div style={{ flexShrink: 0, padding: "var(--space-4) var(--booth-gutter) 0" }}>
         <QrPanel qrSrc={qrDataUrl} shareUrl={shareUrl} />
       </div>
 
       <footer
         style={{
           flexShrink: 0,
-          padding: "var(--space-5) var(--booth-gutter) var(--space-6)",
+          padding: "var(--space-4) var(--booth-gutter) var(--space-5)",
         }}
       >
         <Button full onClick={onDone}>
@@ -69,7 +69,7 @@ export function ResultStep({
         </Button>
         <p
           style={{
-            margin: "var(--space-4) 0 0",
+            margin: "var(--space-2) 0 0",
             textAlign: "center",
             font: "var(--type-meta)",
             color: "var(--text-invert-muted)",

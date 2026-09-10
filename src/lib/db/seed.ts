@@ -1,4 +1,4 @@
-import { buildTheme } from "@/lib/theme/compose";
+import { buildTheme, stableIds } from "@/lib/theme/compose";
 import type { Preset } from "@/lib/schema";
 
 /**
@@ -71,12 +71,18 @@ export function defaultPreset(now = Date.now()): Preset {
      * Each theme carries its own customisations because their options only
      * make sense inside one — a jungle ranger's outfits are not a superhero's,
      * and only the superhero is asked what power they have.
+     *
+     * `stableIds` is load-bearing, not tidiness. This function is called on
+     * every read of a preset stored in an older shape (lib/db/migrations), so
+     * with the interactive minter the ids the kiosk handed a guest no longer
+     * existed by the time they tapped one — `resolveTheme` returned null and
+     * every guest silently got the no-theme fallback prompt.
      */
     themes: [
-      buildTheme("80s"),
-      buildTheme("Cyberpunk"),
-      buildTheme("Jungle Ranger"),
-      buildTheme("Superhero Comicbook"),
+      buildTheme("80s", undefined, stableIds),
+      buildTheme("Cyberpunk", undefined, stableIds),
+      buildTheme("Jungle Ranger", undefined, stableIds),
+      buildTheme("Superhero Comicbook", undefined, stableIds),
     ],
 
     flow: {
