@@ -71,7 +71,7 @@ export function PickStep({
                 padding: 0,
                 cursor: "pointer",
                 overflow: "hidden",
-                background: "var(--sb-ink-3)",
+                background: "var(--sb-purple-deep)",
                 border: `${on ? "var(--border-heavy)" : "var(--border-hard)"} solid var(--line-hard)`,
                 boxShadow: on ? "var(--shadow-slam)" : "none",
                 opacity: on ? 1 : 0.55,

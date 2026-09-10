@@ -123,6 +123,12 @@ export const flowSchema = z.object({
    * silently rather than costing the guest a tap.
    */
   theme: stepConfigSchema,
+  /**
+   * The mood step. Defaulted, because presets written before mood existed are
+   * still on disk and are read on every request — a required field here would
+   * fail them on parse and stop the booth rather than degrade it.
+   */
+  mood: stepConfigSchema.default({ mode: "select", fixedId: null }),
 });
 
 /* ------------------------------------------------------------------ */
@@ -193,6 +199,39 @@ export const retentionSchema = z.object({
   days: z.number().int().min(0).max(3650).default(90),
 });
 
+/**
+ * The mood options a preset starts with.
+ *
+ * Content usually lives in the seed, but this one is a parse-time default —
+ * a preset written before mood existed has no `moods` field, and importing
+ * the seed from here would close a cycle. Ids are literal for the reason
+ * every shipped id is: `upgradePresetShape` runs on each read, and a mood id
+ * that changed between the read that issued it and the read that resolves it
+ * would be silently dropped.
+ */
+export const defaultMoods = (): BoothOption[] => [
+  {
+    id: "opt-mood-happy",
+    label: "Happy",
+    prompt:
+      "A warm, genuine smile with the eyes creased and engaged, relaxed shoulders, " +
+      "and an open, approachable posture.",
+    imageUrl: null,
+    useAsReference: false,
+    enabled: true,
+  },
+  {
+    id: "opt-mood-serious",
+    label: "Serious",
+    prompt:
+      "A composed, level expression with the mouth closed and the gaze direct and steady, " +
+      "chin level, shoulders squared and still.",
+    imageUrl: null,
+    useAsReference: false,
+    enabled: true,
+  },
+];
+
 export const presetSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1).max(80),
@@ -204,6 +243,14 @@ export const presetSchema = z.object({
     consent: consentSchema,
   }),
   themes: z.array(themeSchema).max(MAX_OPTIONS),
+  /**
+   * How the guest wants to look, asked once and applied to whichever theme
+   * they picked. Preset-level rather than a slot on each theme: it means the
+   * same thing everywhere, the Superhero theme is already at the four-slot
+   * cap, and copying one pair of options into every theme would let them
+   * drift apart and split the analytics four ways.
+   */
+  moods: z.array(boothOptionSchema).max(MAX_OPTIONS).default(defaultMoods),
   flow: flowSchema,
   generation: generationSchema,
   retention: retentionSchema,
@@ -337,6 +384,8 @@ export const uploadBodySchema = z.object({
 export const generateBodySchema = z.object({
   sessionId: z.string().min(1),
   themeId: z.string().nullable(),
+  /** Defaulted so a kiosk mid-session across a deploy still submits. */
+  moodId: z.string().nullable().default(null),
   /**
    * Customisation id to chosen option id. Every entry is re-resolved against
    * the live preset server-side, so an unknown key or a stale option id is

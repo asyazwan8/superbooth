@@ -1,6 +1,6 @@
 import { badRequest, handle, ok, readJson } from "@/lib/api";
 import { requireAdmin } from "@/lib/auth";
-import { resolveAllCustomisations, resolveTheme } from "@/lib/booth/steps";
+import { resolveAllCustomisations, resolveMood, resolveTheme } from "@/lib/booth/steps";
 import { getDb, sanitisePreset } from "@/lib/db";
 import { buildPrompt, estimateCostUsd } from "@/lib/fal/prompt";
 import { getProvider } from "@/lib/fal/provider";
@@ -25,6 +25,7 @@ export async function POST(request: Request) {
       presetId?: unknown;
       photoUrl?: unknown;
       themeId?: unknown;
+      moodId?: unknown;
       customisations?: unknown;
     };
 
@@ -54,9 +55,37 @@ export async function POST(request: Request) {
         ? (body.customisations as Record<string, string>)
         : {};
 
+    // Mirrors the booth: an explicitly named mood wins over the pinned one,
+    // and it rides the customisation channel into a `MOOD —` section.
+    const namedMood =
+      typeof body.moodId === "string" && body.moodId
+        ? publicPreset.moods.find((mood) => mood.id === body.moodId)
+        : undefined;
+    const mood = namedMood ?? resolveMood(publicPreset, null) ?? publicPreset.moods[0] ?? null;
+
     const { prompt, imageUrls } = buildPrompt(
       publicPreset,
-      { theme, customisations: resolveAllCustomisations(theme, selected) },
+      {
+        theme,
+        customisations: [
+          ...resolveAllCustomisations(theme, selected),
+          ...(mood
+            ? [
+                {
+                  slot: {
+                    id: "custom-mood",
+                    label: "Mood",
+                    title: "",
+                    subtitle: "",
+                    options: [],
+                    enabled: true,
+                  },
+                  option: mood,
+                },
+              ]
+            : []),
+        ],
+      },
       body.photoUrl,
     );
 

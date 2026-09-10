@@ -1,5 +1,5 @@
 import { buildTheme, stableIds } from "@/lib/theme/compose";
-import type { Preset } from "@/lib/schema";
+import { defaultMoods, type Preset } from "@/lib/schema";
 
 /**
  * The preset a fresh install starts from.
@@ -85,8 +85,17 @@ export function defaultPreset(now = Date.now()): Preset {
       buildTheme("Superhero Comicbook", undefined, stableIds),
     ],
 
+    /*
+     * Mood is not listed beside the themes above because it is not theme
+     * content: the schema carries the shipped pair as a parse-time default,
+     * so a preset written before mood existed gains it on read rather than
+     * failing validation.
+     */
+    moods: defaultMoods(),
+
     flow: {
       theme: { mode: "select", fixedId: null },
+      mood: { mode: "select", fixedId: null },
     },
 
     generation: {

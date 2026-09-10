@@ -27,6 +27,27 @@
   --font-display: var(--font-anton), "Archivo", Impact, sans-serif;
   --font-ui: var(--font-archivo), "Helvetica Neue", Helvetica, sans-serif;
   --font-mono: var(--font-space-mono), ui-monospace, monospace;
+
+  /*
+   * Muted text on the inverted ground.
+   *
+   * The token's own value is a desaturated lilac tuned against ink. Nothing
+   * in this product stands on ink any more — booth and backend both sit on
+   * purple — and against that it falls to roughly 2:1 and stops being
+   * readable. Paper at reduced strength keeps the same "quieter than the
+   * body copy" role and holds its contrast. Overridden here rather than in
+   * src/styles/tokens, which is the design system's and is imported
+   * unchanged.
+   */
+  --text-invert-muted: color-mix(in srgb, var(--sb-paper) 76%, transparent);
+}
+
+/*
+ * The document ground. tokens/base.css sets ink; the product does not use it
+ * as a surface any more, and a black gutter shows around short admin pages.
+ */
+body {
+  background: var(--surface-invert);
 }
 
 html,

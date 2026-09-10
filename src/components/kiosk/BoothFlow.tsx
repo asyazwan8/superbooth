@@ -22,6 +22,7 @@ import { readBoothMotion, stepVariants } from "@/lib/booth/motion";
 import {
   askedCustomisations,
   customisationIndex,
+  enabledMoods,
   enabledThemes,
   optionsFor,
   progressSteps,
@@ -53,11 +54,12 @@ const RESULT_AUTO_RESET_SEC = 45;
 const GROUNDS: Record<string, StageGround> = {
   details: "menu",
   theme: "menu",
-  capture: "stage",
+  mood: "menu",
+  capture: "purple",
   review: "menu",
-  generating: "stage",
-  pick: "stage",
-  result: "stage",
+  generating: "purple",
+  pick: "purple",
+  result: "purple",
   error: "purple",
 };
 
@@ -65,7 +67,8 @@ const GROUNDS: Record<string, StageGround> = {
 function groundFor(step: StepId, error: boolean): StageGround {
   if (error) return "purple";
   if (customisationIndex(step) !== null) return "menu";
-  return GROUNDS[step] ?? "stage";
+  // Purple, not ink: nothing in the booth stands on black.
+  return GROUNDS[step] ?? "purple";
 }
 
 /**
@@ -176,6 +179,7 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
   const [fields, setFields] = useState<Record<string, string>>({});
   const [consent, setConsent] = useState(false);
   const [themeId, setThemeId] = useState<string | null>(null);
+  const [moodId, setMoodId] = useState<string | null>(null);
   /** Customisation id to chosen option id, for the current theme only. */
   const [customisations, setCustomisations] = useState<Record<string, string>>({});
 
@@ -197,6 +201,7 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
     setFields({});
     setConsent(false);
     setThemeId(null);
+    setMoodId(null);
     setCustomisations({});
     setSession(EMPTY_SESSION);
     setBusy(false);
@@ -279,6 +284,19 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
     [preset, setStep],
   );
 
+  /*
+   * Unlike a customisation, mood is not cleared when the theme changes: it
+   * belongs to the guest, not to the theme, and asking again for the same
+   * answer is a tap for nothing.
+   */
+  const chooseMood = useCallback(
+    (option: BoothOption) => {
+      setMoodId(option.id);
+      advance("mood");
+    },
+    [advance],
+  );
+
   const chooseCustomisation = useCallback(
     (step: StepId, slotId: string, option: BoothOption) => {
       setCustomisations((current) => ({ ...current, [slotId]: option.id }));
@@ -295,6 +313,7 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
       const { requestId } = await postJson<{ requestId: string }>("/api/booth/generate", {
         sessionId,
         themeId,
+        moodId,
         customisations,
       });
       setSession((state) => ({
@@ -304,7 +323,7 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
         attempts: state.attempts + 1,
       }));
     },
-    [customisations, setStep, themeId],
+    [customisations, moodId, setStep, themeId],
   );
 
   const confirmPhoto = useCallback(async () => {
@@ -507,6 +526,21 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
             selectedId={themeId}
             onSelect={chooseTheme}
             onBack={undefined}
+            dotsTotal={progress.length}
+            dotsCurrent={dotIndex}
+          />
+        );
+
+      case "mood":
+        return (
+          <ChoiceStep
+            title="How are you feeling?"
+            subtitle="Pick the face you want to wear."
+            tone="pink"
+            options={enabledMoods(preset)}
+            selectedId={moodId}
+            onSelect={chooseMood}
+            onBack={goBack}
             dotsTotal={progress.length}
             dotsCurrent={dotIndex}
           />

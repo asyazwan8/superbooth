@@ -65,18 +65,6 @@ export function GeneratingStep({
         textAlign: "center",
       }}
     >
-      <span
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          inset: 0,
-          backgroundImage: "var(--texture-halftone)",
-          backgroundSize: "var(--texture-halftone-size)",
-          opacity: 0.2,
-          animation: "sb-halftone-drift 2s linear infinite",
-        }}
-      />
-
       <SuperLogo
         src={logoUrl || undefined}
         height="36cqi"

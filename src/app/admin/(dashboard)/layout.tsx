@@ -34,13 +34,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   ].filter((badge): badge is string => badge !== null);
 
   return (
-    // Two grounds, as everywhere in this system: ink for the shell, paper for
-    // the panels and tables on it. Gold is kept for headings and the active nav
-    // item, so an operator's eye lands on structure rather than decoration.
+    // Two grounds, as everywhere in this system: purple for the shell, paper
+    // for the panels and tables on it. Gold is kept for headings and the active
+    // nav item, so an operator's eye lands on structure rather than decoration.
+    // The dotted purple is the booth's own ground — the backend is the same
+    // product, seen from the other side.
     <div
       style={{
+        position: "relative",
         minHeight: "100dvh",
-        background: "var(--surface-stage)",
+        background: "var(--surface-invert)",
+        backgroundImage: "var(--texture-halftone)",
+        backgroundSize: "var(--texture-halftone-size)",
         color: "var(--text-invert)",
       }}
     >

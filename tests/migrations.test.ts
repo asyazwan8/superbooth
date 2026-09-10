@@ -93,7 +93,10 @@ describe("upgradePresetShape", () => {
 
   it("drops a flow that pinned a step which no longer exists", () => {
     const upgraded = presetSchema.parse(upgradePresetShape(storedLegacyPreset()));
-    expect(upgraded.flow).toEqual({ theme: { mode: "select", fixedId: null } });
+    expect(upgraded.flow).toEqual({
+      theme: { mode: "select", fixedId: null },
+      mood: { mode: "select", fixedId: null },
+    });
   });
 
   it("gives the same ids every time, so a kiosk's snapshot stays valid", () => {
@@ -122,6 +125,18 @@ describe("upgradePresetShape", () => {
         ]),
       ),
     );
+  });
+
+  it("gives a preset written before mood existed the shipped pair", () => {
+    // The stored document has no `moods` at all. A required field here would
+    // fail it on read and stop the booth; the schema's default is what turns
+    // that into an upgrade.
+    const upgraded = presetSchema.parse(upgradePresetShape(storedLegacyPreset()));
+    expect(upgraded.moods.map((mood) => mood.label)).toEqual(["Happy", "Serious"]);
+    expect(upgraded.moods.map((mood) => mood.id)).toEqual([
+      "opt-mood-happy",
+      "opt-mood-serious",
+    ]);
   });
 
   it("carries across everything outside the catalogue", () => {

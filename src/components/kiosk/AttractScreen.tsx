@@ -60,17 +60,6 @@ export function AttractScreen({ preset, mock }: { preset: PublicPreset; mock: bo
           color: "inherit",
         }}
       >
-        <span
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundImage: "var(--texture-halftone)",
-            backgroundSize: "var(--texture-halftone-size)",
-            opacity: 0.28,
-          }}
-        />
-
         <SuperLogo
           src={preset.branding.logoUrl || undefined}
           height="70cqi"

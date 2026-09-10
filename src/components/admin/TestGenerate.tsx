@@ -18,6 +18,7 @@ export function TestGenerate({ preset, dirty }: { preset: Preset; dirty: boolean
   const input = useRef<HTMLInputElement>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [themeId, setThemeId] = useState("");
+  const [moodId, setMoodId] = useState("");
   /** Customisation id to option id, for the theme currently selected. */
   const [customisations, setCustomisations] = useState<Record<string, string>>({});
   const [state, setState] = useState<"idle" | "uploading" | "running" | "done" | "error">("idle");
@@ -58,6 +59,7 @@ export function TestGenerate({ preset, dirty }: { preset: Preset; dirty: boolean
           presetId: preset.id,
           photoUrl,
           themeId: themeId || null,
+          moodId: moodId || null,
           customisations,
         }),
       });
@@ -214,6 +216,19 @@ export function TestGenerate({ preset, dirty }: { preset: Preset; dirty: boolean
           {preset.themes.map((theme) => (
             <option key={theme.id} value={theme.id}>
               {theme.label}
+            </option>
+          ))}
+        </Select>
+
+        <Select
+          aria-label="Mood to test"
+          value={moodId}
+          onChange={(event) => setMoodId(event.target.value)}
+        >
+          <option value="">Mood — as configured</option>
+          {preset.moods.map((mood) => (
+            <option key={mood.id} value={mood.id}>
+              {mood.label}
             </option>
           ))}
         </Select>
