@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import { Overlay } from "@/components/ds/booth";
 import { Button } from "@/components/ds/core";
+import { useBoothMusic } from "@/hooks/useBoothMusic";
 
 /** Taps on the hidden corner needed to open the attendant prompt. */
 const TAP_COUNT = 5;
@@ -27,6 +28,7 @@ export function AttendantMenu({ onReset }: { onReset: () => void }) {
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
+  const { muted, setMuted } = useBoothMusic();
   const taps = useRef<number[]>([]);
 
   const registerTap = useCallback(() => {
@@ -140,6 +142,13 @@ export function AttendantMenu({ onReset }: { onReset: () => void }) {
               }}
             >
               Reset session
+            </Button>
+            {/* Per-device and immediate, because the reason to reach for this
+                is always the room: a speech starting, a DJ taking over, a
+                booth sitting too close to a stage. It outlives the session
+                and the page, so staff silence a booth once. */}
+            <Button full tone="secondary" onClick={() => setMuted(!muted)}>
+              {muted ? "Unmute music" : "Mute music"}
             </Button>
             <Button full tone="ghost" onClick={() => setOpen(false)}>
               Cancel

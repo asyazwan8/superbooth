@@ -16,6 +16,7 @@ import { GeneratingStep } from "@/components/kiosk/steps/GeneratingStep";
 import { PickStep } from "@/components/kiosk/steps/PickStep";
 import { ResultStep } from "@/components/kiosk/steps/ResultStep";
 import { ReviewStep } from "@/components/kiosk/steps/ReviewStep";
+import { useBoothMusic, useMusicDuck } from "@/hooks/useBoothMusic";
 import { useIdleReset } from "@/hooks/useIdleReset";
 import { useKioskMode } from "@/hooks/useKioskMode";
 import { readBoothMotion, stepVariants } from "@/lib/booth/motion";
@@ -164,6 +165,7 @@ async function postJson<T>(url: string, body: unknown, retries = 0): Promise<T> 
 export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolean }) {
   const router = useRouter();
   const { engage } = useKioskMode();
+  const { unlock } = useBoothMusic();
 
   const [step, setStepId] = useState<StepId>("details");
   // Which way the journey just moved, so a transition can carry the same
@@ -221,6 +223,11 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
     onReset: reset,
   });
 
+  // Quiet the bed while the guest is being photographed. The countdown and the
+  // shutter are the beat the whole session turns on, and they do not land over
+  // a full-volume track.
+  useMusicDuck(step === "capture");
+
   const advance = useCallback(
     (from: StepId) => {
       const index = sequence.indexOf(from);
@@ -245,6 +252,9 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
     setError(null);
     try {
       void engage();
+      // A guest who reached /booth directly — a bookmarked kiosk, a reset that
+      // landed here — never passed the attract tap, so this is their gesture.
+      unlock();
       const { sessionId } = await postJson<{ sessionId: string }>(
         "/api/booth/session",
         { fields, consentAccepted: consent },
@@ -257,7 +267,7 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
     } finally {
       setBusy(false);
     }
-  }, [advance, consent, engage, fields]);
+  }, [advance, consent, engage, fields, unlock]);
 
   /**
    * Choosing a theme resets whatever was picked inside the previous one: the
