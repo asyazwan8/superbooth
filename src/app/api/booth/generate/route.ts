@@ -34,6 +34,23 @@ export async function POST(request: Request) {
     // can name any id, and the operator's pinned theme wins regardless.
     const publicPreset = sanitisePreset(preset);
     const theme = resolveTheme(publicPreset, body.themeId);
+
+    /*
+     * A named theme that does not resolve is a hard stop, not a shrug.
+     *
+     * `buildPrompt` has a no-theme fallback, and it produces a perfectly
+     * plausible generic portrait — which is exactly what makes it dangerous
+     * here: the guest is billed for an image nobody asked for and has no way
+     * to tell it went wrong. It happened in production, for every guest, when
+     * the preset's ids were being regenerated on each read.
+     *
+     * The fallback still has a caller: the admin test tool deliberately runs
+     * without a theme. This only guards the booth, where a theme was chosen.
+     */
+    if (body.themeId && !theme) {
+      throw badRequest("That look is no longer available. Please start over.");
+    }
+
     const customisations = resolveAllCustomisations(theme, body.customisations);
 
     const { prompt, imageUrls } = buildPrompt(

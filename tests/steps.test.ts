@@ -134,6 +134,54 @@ describe("resolveTheme", () => {
   });
 });
 
+describe("resolving across two separate reads", () => {
+  /*
+   * The assertion that would have caught the production failure.
+   *
+   * A guest's journey spans two independent reads of the preset: the booth
+   * page issues the ids into a client prop, and /api/booth/generate re-reads
+   * to resolve what they tapped. Every other test here resolves against one
+   * shared instance, which is precisely why none of them noticed that the two
+   * reads had stopped agreeing.
+   */
+  const readA = defaultPreset(1_000);
+  const readB = defaultPreset(2_000);
+
+  const asPublic = (full: ReturnType<typeof defaultPreset>): PublicPreset => ({
+    id: full.id,
+    name: full.name,
+    branding: full.branding,
+    flow: full.flow,
+    generation: full.generation,
+    form: full.form,
+    themes: full.themes,
+  });
+
+  it("resolves a theme id issued by an earlier read", () => {
+    const issued = readA.themes.find((theme) => theme.label === "80s")!;
+    expect(resolveTheme(asPublic(readB), issued.id)?.label).toBe("80s");
+  });
+
+  it("resolves the customisations chosen against an earlier read", () => {
+    const issued = readA.themes.find((theme) => theme.label === "Superhero Comicbook")!;
+    const answers = Object.fromEntries(
+      issued.customisations.map((slot) => [slot.id, slot.options[0].id]),
+    );
+
+    const resolved = resolveAllCustomisations(
+      resolveTheme(asPublic(readB), issued.id),
+      answers,
+    );
+
+    expect(resolved.map((entry) => entry.slot.label)).toEqual(
+      issued.customisations.map((slot) => slot.label),
+    );
+    expect(resolved.map((entry) => entry.option.label)).toEqual(
+      issued.customisations.map((slot) => slot.options[0].label),
+    );
+  });
+});
+
 describe("askedCustomisations", () => {
   it("only asks a slot that offers a real choice", () => {
     const theme = eighties();

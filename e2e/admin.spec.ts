@@ -143,7 +143,21 @@ test("the sessions table lists guests and exports them as CSV", async ({ page })
   const csv = await page.request.get("/api/admin/sessions?format=csv");
   expect(csv.ok()).toBe(true);
   expect(csv.headers()["content-disposition"]).toContain("attachment");
-  expect(await csv.text()).toContain('"created_at"');
+  const text = await csv.text();
+  expect(text).toContain('"created_at"');
+
+  /*
+   * What the guest actually chose has to survive into the record.
+   *
+   * The kiosk specs run first and walk a theme, so a completed session exists
+   * by now. When the preset's ids stopped agreeing between reads, the server
+   * resolved no theme, wrote `theme: null`, and generated a generic portrait —
+   * and every test still passed, because nothing asserted the choice reached
+   * the record. This is that assertion.
+   */
+  expect(text).toContain('"theme"');
+  const themed = text.split("\n").some((row) => /"(80s|Cyberpunk|Jungle Ranger|Superhero Comicbook)"/.test(row));
+  expect(themed, "no session recorded the theme the guest chose").toBe(true);
 });
 
 test("analytics reports a coherent funnel", async ({ page }) => {

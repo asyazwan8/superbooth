@@ -94,7 +94,12 @@ export function buildPrompt(
   sections.push(
     themeText
       ? `Create a portrait of the person in the first reference image. ${themeText}`
-      : "Create a polished, professional portrait of the person in the first reference image.",
+      : // Deliberately not the word "portrait" on its own: it reads as
+        // head-and-shoulders and pulled against the full-length FRAMING
+        // section below, which is how a themeless generation came back
+        // cropped at the chest.
+        "Create a polished, full-length photograph of the person in the first reference image, " +
+        "standing, with even studio lighting and a clean uncluttered background.",
   );
 
   sections.push(IDENTITY_LOCK);

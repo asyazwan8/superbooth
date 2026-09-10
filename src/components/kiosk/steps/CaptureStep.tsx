@@ -101,6 +101,7 @@ export function CaptureStep({
           // kiosk in a browser with chrome.
           minHeight: 0,
           margin: "var(--space-5) var(--booth-gutter) 0",
+          containerType: "size",
           display: "grid",
           placeItems: "center",
         }}
@@ -108,11 +109,18 @@ export function CaptureStep({
         <div
           style={{
             position: "relative",
-            // Fitted to the stream, so `cover` below crops nothing away.
-            aspectRatio: String(aspect),
-            maxWidth: "100%",
-            maxHeight: "100%",
-            width: "100%",
+            /*
+             * Fitted to the stream, so `cover` below crops nothing away.
+             *
+             * The same `min()` pair `BoothFrame` uses, and not `aspect-ratio`,
+             * which cannot cap one axis against the other: with a definite
+             * width, a max-height clamp resolves both axes and the ratio is
+             * dropped. That was harmless only while every stream was landscape
+             * in a tall area — a phone reporting a portrait stream would have
+             * stretched the frame and cropped the guest.
+             */
+            width: `min(100cqw, calc(100cqh * ${aspect}))`,
+            height: `min(100cqh, calc(100cqw * ${1 / aspect}))`,
             overflow: "hidden",
             // Paper, not the house ink rule: these three screens sit on the ink
             // stage, where a black edge round a dark photo is no edge at all.

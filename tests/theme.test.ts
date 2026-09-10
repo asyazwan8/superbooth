@@ -95,6 +95,67 @@ describe("composeCustomisations", () => {
   });
 });
 
+describe("identity", () => {
+  /*
+   * The bug this guards against reached production: `defaultPreset()` is
+   * called on every read of a preset stored in an older shape, so a random
+   * minter meant the id the kiosk handed a guest no longer existed by the time
+   * they tapped it. `resolveTheme` returned null and every guest silently got
+   * the no-theme fallback prompt — a generic portrait they never chose, billed.
+   */
+  it("gives the shipped themes the same ids on every build", () => {
+    const first = defaultPreset(1_000);
+    const second = defaultPreset(2_000);
+
+    expect(second.themes.map((theme) => theme.id)).toEqual(
+      first.themes.map((theme) => theme.id),
+    );
+    expect(second.themes.flatMap((theme) => theme.customisations.map((slot) => slot.id))).toEqual(
+      first.themes.flatMap((theme) => theme.customisations.map((slot) => slot.id)),
+    );
+    expect(
+      second.themes.flatMap((theme) =>
+        theme.customisations.flatMap((slot) => slot.options.map((option) => option.id)),
+      ),
+    ).toEqual(
+      first.themes.flatMap((theme) =>
+        theme.customisations.flatMap((slot) => slot.options.map((option) => option.id)),
+      ),
+    );
+  });
+
+  it("keeps every shipped id distinct", () => {
+    // Slot labels repeat across themes — each one asks about an Accessory and
+    // a Backdrop — and Cyberpunk and Superhero both offer a Rooftop. Ids are
+    // scoped by theme so those never collide.
+    const preset = defaultPreset();
+    const ids = preset.themes.flatMap((theme) => [
+      theme.id,
+      ...theme.customisations.flatMap((slot) => [
+        slot.id,
+        ...slot.options.map((option) => option.id),
+      ]),
+    ]);
+
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("reads them back off the labels, so they survive a rebuild", () => {
+    const preset = defaultPreset();
+    const eighties = preset.themes.find((theme) => theme.label === "80s")!;
+
+    expect(eighties.id).toBe("theme-80s");
+    expect(eighties.customisations[0].id).toBe("custom-80s-outfit");
+    expect(eighties.customisations[0].options[0].id).toBe("opt-80s-outfit-windbreaker");
+  });
+
+  it("still mints a fresh identity for the backend's build button", () => {
+    // Two events can both have a theme called Neon, and they are not the same
+    // theme — the interactive path must not reuse an id.
+    expect(buildTheme("Deep Sea").id).not.toBe(buildTheme("Deep Sea").id);
+  });
+});
+
 describe("buildTheme", () => {
   it("reproduces what the booth ships with", () => {
     // The claim the backend's button makes: type "80s" and you get the shipped

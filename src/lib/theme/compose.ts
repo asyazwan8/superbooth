@@ -335,16 +335,73 @@ export function composeThemePrompt(name: string, look?: LookFamily): string {
   ].join(" ");
 }
 
+/* ------------------------------------------------------------------ */
+/* Identity                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * How a built theme gets its ids.
+ *
+ * There are two callers with opposite needs. An operator pressing "build a
+ * theme" wants a fresh identity every time — two events can both have a theme
+ * called "Neon", and they are not the same theme. The shipped preset wants the
+ * exact opposite: `defaultPreset()` is called on every read of a preset stored
+ * in an older shape (see lib/db/migrations), so if it minted a new id each
+ * time, the id the kiosk handed a guest would no longer exist by the time they
+ * tapped it. That is not hypothetical — it shipped, and every guest silently
+ * got a generic portrait instead of the theme they chose.
+ */
+export interface IdMinter {
+  theme(themeLabel: string): string;
+  customisation(themeLabel: string, slotLabel: string): string;
+  option(themeLabel: string, slotLabel: string, optionLabel: string): string;
+}
+
+/** The interactive default: a distinct identity per press of the button. */
+export const randomIds: IdMinter = {
+  theme: () => newThemeId(),
+  customisation: () => newCustomisationId(),
+  option: () => newOptionId("opt"),
+};
+
+/** `Grand Ballroom` -> `grand-ballroom`. */
+function slug(value: string): string {
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "untitled"
+  );
+}
+
+/**
+ * Ids derived from the labels, so building the same theme twice gives the same
+ * identity. Scoped by theme throughout, because slot labels repeat across
+ * themes — every theme asks about an Accessory and a Backdrop, and both
+ * Cyberpunk and Superhero offer a Rooftop.
+ */
+export const stableIds: IdMinter = {
+  theme: (themeLabel) => `theme-${slug(themeLabel)}`,
+  customisation: (themeLabel, slotLabel) => `custom-${slug(themeLabel)}-${slug(slotLabel)}`,
+  option: (themeLabel, slotLabel, optionLabel) =>
+    `opt-${slug(themeLabel)}-${slug(slotLabel)}-${slug(optionLabel)}`,
+};
+
 /** The slots the theme opens with, ready to edit. */
-export function composeCustomisations(name: string, look?: LookFamily): Customisation[] {
+export function composeCustomisations(
+  name: string,
+  look?: LookFamily,
+  ids: IdMinter = randomIds,
+): Customisation[] {
+  const themeLabel = name.trim();
   return recipeFor(name, look).slots.map((slot) => ({
-    id: newCustomisationId(),
+    id: ids.customisation(themeLabel, slot.label),
     label: slot.label,
     title: slot.title,
     subtitle: slot.subtitle,
     enabled: true,
     options: slot.options.map((option) => ({
-      id: newOptionId("opt"),
+      id: ids.option(themeLabel, slot.label, option.label),
       label: option.label,
       prompt: option.prompt,
       imageUrl: null,
@@ -355,16 +412,20 @@ export function composeCustomisations(name: string, look?: LookFamily): Customis
 }
 
 /** A whole theme from a name — what the backend's build button produces. */
-export function buildTheme(name: string, look?: LookFamily): Theme {
+export function buildTheme(
+  name: string,
+  look?: LookFamily,
+  ids: IdMinter = randomIds,
+): Theme {
   const label = name.trim();
   return {
-    id: newThemeId(),
+    id: ids.theme(label),
     label,
     prompt: composeThemePrompt(label, look),
     imageUrl: null,
     useAsReference: false,
     enabled: true,
-    customisations: composeCustomisations(label, look),
+    customisations: composeCustomisations(label, look, ids),
   };
 }
 
