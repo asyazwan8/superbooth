@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { ImageUploadField } from "@/components/admin/ImageUploadField";
 import { KioskPreview } from "@/components/admin/KioskPreview";
+import { OptionEditor } from "@/components/admin/OptionEditor";
 import { ThemeEditor } from "@/components/admin/ThemeEditor";
 import { TestGenerate } from "@/components/admin/TestGenerate";
 import {
@@ -81,6 +82,7 @@ export function PresetEditor({ initial }: { initial: Preset }) {
   // mirrors what sanitisePreset does on the server.
   const previewPreset: PublicPreset = {
     ...preset,
+    moods: preset.moods.filter((option) => option.enabled),
     themes: preset.themes
       .filter((theme) => theme.enabled)
       .map((theme) => ({
@@ -198,12 +200,29 @@ export function PresetEditor({ initial }: { initial: Preset }) {
           {tab === "Guest form" ? <FormTab preset={preset} patch={patch} /> : null}
 
           {tab === "Themes" ? (
-            <ThemeEditor
-              themes={preset.themes}
-              config={preset.flow.theme}
-              onChange={(themes) => patch({ themes })}
-              onConfigChange={(theme) => patch({ flow: { ...preset.flow, theme } })}
-            />
+            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-8)" }}>
+              <ThemeEditor
+                themes={preset.themes}
+                config={preset.flow.theme}
+                onChange={(themes) => patch({ themes })}
+                onConfigChange={(theme) => patch({ flow: { ...preset.flow, theme } })}
+              />
+
+              {/* Mood sits with the themes rather than in a tab of its own:
+                  it is a question the guest answers in the same breath, and
+                  a tab holding two options would be mostly chrome. */}
+              <OptionEditor
+                title="Mood"
+                description="Asked once, after the theme, and applied to whichever theme the guest picked."
+                idPrefix="opt-mood"
+                configLabel="How the guest picks a mood"
+                options={preset.moods}
+                config={preset.flow.mood}
+                onChange={(moods) => patch({ moods })}
+                onConfigChange={(mood) => patch({ flow: { ...preset.flow, mood } })}
+                defaultReference={false}
+              />
+            </div>
           ) : null}
 
           {tab === "Generation" ? <GenerationTab preset={preset} patch={patch} /> : null}

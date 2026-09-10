@@ -74,11 +74,11 @@ export function FittedPhoto({
           width: `min(100cqw, calc(100cqh * ${ratio}))`,
           height: `min(100cqh, calc(100cqw * ${1 / ratio}))`,
           overflow: "hidden",
-          // Paper, not the house ink rule: these screens sit on the ink stage,
-          // where a black edge round a dark photo is no edge at all.
+          // Paper, not the house ink rule: these screens sit on the purple
+          // ground, where an ink edge round a dark photo disappears into it.
           border,
           boxShadow: shadow,
-          background: "var(--sb-ink-2)",
+          background: "var(--sb-purple-deep)",
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}

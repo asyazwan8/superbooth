@@ -59,7 +59,9 @@ export function NavBar({
         position: "sticky",
         top: 0,
         zIndex: 20,
-        background: "var(--sb-ink)",
+        // The deep purple, not ink: it still reads as a bar against the
+        // shell without putting black back on the screen.
+        background: "var(--sb-purple-deep)",
         borderBottom: "var(--border-hard) solid var(--sb-gold)",
       }}
     >
@@ -502,7 +504,7 @@ export function DailyColumns({ days = [] }: { days?: DayCount[] }) {
               height: `${(day.total / max) * 100}%`,
               maxHeight: "calc(100% - 40px)",
               minHeight: 4,
-              background: "var(--sb-ink-3)",
+              background: "var(--sb-purple-deep)",
               border: "var(--border-hair) solid var(--line-hard)",
             }}
           >

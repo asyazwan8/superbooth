@@ -72,7 +72,7 @@ const STAGE_GROUNDS: Record<StageGround, CSSProperties> = {
  * scales against the stage, and a letterboxed stage is not the viewport.
  */
 export function BoothFrame({
-  ground = "stage",
+  ground = "purple",
   children,
   style,
   ...rest
@@ -107,7 +107,34 @@ export function BoothFrame({
           ...style,
         }}
       >
-        {children}
+        {/*
+          The dots belong to the ground, not to each screen that stands on it.
+          Every purple surface in the booth wears them — it is what makes the
+          idle screen and the wait screen read as one place — so painting them
+          here is the difference between one rule and a span copied into every
+          screen, drifting in opacity as it goes.
+        */}
+        {ground === "purple" ? (
+          <span
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              inset: 0,
+              backgroundImage: "var(--texture-halftone)",
+              backgroundSize: "var(--texture-halftone-size)",
+              opacity: 0.28,
+              pointerEvents: "none",
+            }}
+          />
+        ) : null}
+        {/*
+          Content is wrapped, not left bare, because the dot layer above is
+          positioned: CSS paints positioned boxes after static ones whatever
+          the DOM order, so without this the dots fall across every button on
+          the screen. The attract screen used to hoist each element out of the
+          way with its own `position: relative`; this does it once.
+        */}
+        <div style={{ position: "relative", height: "100%" }}>{children}</div>
       </div>
     </div>
   );
@@ -672,7 +699,7 @@ export function ProgressBar({ value }: { value: number }) {
         // stage; the 22px is the token floor for anything rendered outside one.
         height: "var(--booth-bar, 22px)",
         width: "100%",
-        background: "var(--sb-ink-2)",
+        background: "var(--sb-purple-deep)",
         border: "var(--border-hard) solid var(--line-hard)",
         overflow: "hidden",
       }}

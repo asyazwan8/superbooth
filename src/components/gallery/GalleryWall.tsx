@@ -92,7 +92,7 @@ export function GalleryWall({ initial }: { initial: GalleryItem[] }) {
       style={{
         minHeight: "100dvh",
         padding: "var(--space-4)",
-        background: "var(--surface-stage)",
+        background: "var(--surface-invert)",
       }}
     >
       <div
@@ -112,7 +112,7 @@ export function GalleryWall({ initial }: { initial: GalleryItem[] }) {
                 margin: 0,
                 aspectRatio: "9 / 16",
                 overflow: "hidden",
-                background: "var(--sb-ink-2)",
+                background: "var(--sb-purple-deep)",
                 // The newest photo is the only one edged in gold and lifted,
                 // so a guest can find theirs from across the room. The house
                 // ink rule is invisible here — the wall's ground is ink.

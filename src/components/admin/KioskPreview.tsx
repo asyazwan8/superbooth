@@ -5,6 +5,7 @@ import { SuperLogo } from "@/components/ds/booth";
 import {
   askedCustomisations,
   customisationIndex,
+  enabledMoods,
   enabledThemes,
   optionsFor,
   resolveTheme,
@@ -25,6 +26,7 @@ import type { PublicPreset } from "@/lib/schema";
 const LABELS: Partial<Record<StepId, string>> = {
   details: "Details & consent",
   theme: "Choose theme",
+  mood: "Choose mood",
   capture: "Take photo",
   review: "Review & retake",
   generating: "Generating",
@@ -177,6 +179,8 @@ export function KioskPreview({ preset }: { preset: PublicPreset }) {
             const options =
               step === "theme"
                 ? enabledThemes(preset).length
+                : step === "mood"
+                  ? enabledMoods(preset).length
                 : slot
                   ? optionsFor(slot).length
                   : null;

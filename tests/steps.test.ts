@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   askedCustomisations,
   customisationIndex,
+  isMoodStepVisible,
   isThemeStepVisible,
+  resolveMood,
   progressSteps,
   resolveAllCustomisations,
   resolveCustomisation,
@@ -28,6 +30,7 @@ function preset(overrides: Partial<PublicPreset> = {}): PublicPreset {
     generation: BASE.generation,
     form: BASE.form,
     themes: BASE.themes,
+    moods: BASE.moods,
     ...overrides,
   };
 }
@@ -41,6 +44,7 @@ describe("stepSequence", () => {
     expect(stepSequence(preset(), eighties().id)).toEqual([
       "details",
       "theme",
+      "mood",
       "custom-0",
       "custom-1",
       "custom-2",
@@ -65,6 +69,7 @@ describe("stepSequence", () => {
     expect(sequence).toEqual([
       "details",
       "theme",
+      "mood",
       "capture",
       "review",
       "generating",
@@ -76,7 +81,7 @@ describe("stepSequence", () => {
   it("skips the theme step the operator has fixed, and still asks its questions", () => {
     const base = preset();
     const pinned = preset({
-      flow: { theme: { mode: "fixed", fixedId: superhero().id } },
+      flow: { ...BASE.flow, theme: { mode: "fixed", fixedId: superhero().id } },
     });
 
     expect(base.flow.theme.mode).toBe("select");
@@ -111,13 +116,17 @@ describe("customisationIndex", () => {
 
 describe("resolveTheme", () => {
   it("returns the operator's pinned theme regardless of what the client sends", () => {
-    const pinned = preset({ flow: { theme: { mode: "fixed", fixedId: superhero().id } } });
+    const pinned = preset({
+      flow: { ...BASE.flow, theme: { mode: "fixed", fixedId: superhero().id } },
+    });
     // A stale or tampered client could name any id; the pinned theme wins.
     expect(resolveTheme(pinned, eighties().id)?.label).toBe("Superhero Comicbook");
   });
 
   it("falls back to the first theme when the pinned id no longer exists", () => {
-    const stale = preset({ flow: { theme: { mode: "fixed", fixedId: "theme-deleted" } } });
+    const stale = preset({
+      flow: { ...BASE.flow, theme: { mode: "fixed", fixedId: "theme-deleted" } },
+    });
     expect(resolveTheme(stale, null)?.id).toBe(BASE.themes[0].id);
   });
 
@@ -155,6 +164,7 @@ describe("resolving across two separate reads", () => {
     generation: full.generation,
     form: full.form,
     themes: full.themes,
+    moods: full.moods,
   });
 
   it("resolves a theme id issued by an earlier read", () => {
@@ -179,6 +189,48 @@ describe("resolving across two separate reads", () => {
     expect(resolved.map((entry) => entry.option.label)).toEqual(
       issued.customisations.map((slot) => slot.options[0].label),
     );
+  });
+});
+
+describe("mood", () => {
+  it("is asked once, between the theme and its questions", () => {
+    const sequence = stepSequence(preset(), eighties().id);
+    expect(sequence.indexOf("mood")).toBe(sequence.indexOf("theme") + 1);
+    expect(sequence.indexOf("mood")).toBeLessThan(sequence.indexOf("custom-0"));
+  });
+
+  it("survives a theme change, unlike a customisation", () => {
+    // Mood belongs to the guest, not the theme, so the same answer resolves
+    // whichever theme it is asked against.
+    const chosen = preset().moods[1];
+    expect(resolveMood(preset(), chosen.id)?.label).toBe("Serious");
+  });
+
+  it("resolves an id issued by an earlier read", () => {
+    const readA = defaultPreset(1_000);
+    const readB = defaultPreset(2_000);
+    const issued = readA.moods[0];
+    expect(resolveMood({ ...preset(), moods: readB.moods }, issued.id)?.label).toBe("Happy");
+  });
+
+  it("returns the operator's pinned mood regardless of what the client sends", () => {
+    const pinned = preset({
+      flow: { ...BASE.flow, mood: { mode: "fixed", fixedId: "opt-mood-serious" } },
+    });
+    expect(resolveMood(pinned, "opt-mood-happy")?.label).toBe("Serious");
+  });
+
+  it("ignores a selection that is not on offer", () => {
+    expect(resolveMood(preset(), "opt-mood-furious")).toBeNull();
+  });
+
+  it("is not asked when pinned, or when there is nothing to choose", () => {
+    expect(isMoodStepVisible(preset())).toBe(true);
+    expect(
+      isMoodStepVisible(preset({ flow: { ...BASE.flow, mood: { mode: "fixed", fixedId: null } } })),
+    ).toBe(false);
+    expect(isMoodStepVisible(preset({ moods: [BASE.moods[0]] }))).toBe(false);
+    expect(stepSequence(preset({ moods: [] }), eighties().id)).not.toContain("mood");
   });
 });
 
@@ -252,7 +304,9 @@ describe("isThemeStepVisible", () => {
   it("hides a fixed theme and shows a selectable one", () => {
     expect(isThemeStepVisible(preset())).toBe(true);
     expect(
-      isThemeStepVisible(preset({ flow: { theme: { mode: "fixed", fixedId: null } } })),
+      isThemeStepVisible(
+        preset({ flow: { ...BASE.flow, theme: { mode: "fixed", fixedId: null } } }),
+      ),
     ).toBe(false);
   });
 });
@@ -275,6 +329,7 @@ describe("progressSteps", () => {
     expect(steps).toEqual([
       "details",
       "theme",
+      "mood",
       "custom-0",
       "custom-1",
       "custom-2",

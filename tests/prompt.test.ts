@@ -15,6 +15,7 @@ function preset(): PublicPreset {
     generation: full.generation,
     form: full.form,
     themes: full.themes,
+    moods: full.moods,
   };
 }
 
@@ -106,6 +107,30 @@ describe("buildPrompt", () => {
 
     expect(built.prompt).toContain("ACCESSORY — a sheathed machete on the hip");
     expect(built.prompt).toContain("SUPERPOWER — flame wreathing the hands");
+  });
+
+  it("puts the mood after the theme's questions and before the framing", () => {
+    /*
+     * Order is the instruction here. Mood must sit below IDENTITY, which says
+     * outright that it overrides every stylistic instruction under it, and
+     * above FRAMING, so the framing rules stay the last word on the face.
+     */
+    const built = buildPrompt(
+      preset(),
+      {
+        theme: theme({ prompt: "A neon arcade." }),
+        customisations: [
+          slot("Outfit", option({ id: "o", prompt: "a windbreaker" })),
+          slot("Mood", option({ id: "m", prompt: "a warm, genuine smile" })),
+        ],
+      },
+      PHOTO,
+    );
+
+    expect(built.prompt).toContain("MOOD — a warm, genuine smile");
+    expect(built.prompt.indexOf("IDENTITY")).toBeLessThan(built.prompt.indexOf("MOOD —"));
+    expect(built.prompt.indexOf("OUTFIT —")).toBeLessThan(built.prompt.indexOf("MOOD —"));
+    expect(built.prompt.indexOf("MOOD —")).toBeLessThan(built.prompt.indexOf("FRAMING —"));
   });
 
   it("tells the model not to take the face from any other reference", () => {

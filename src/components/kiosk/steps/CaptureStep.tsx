@@ -32,17 +32,6 @@ export function CaptureStep({
   const { videoRef, state, error, retry } = useCamera();
   const [countdown, setCountdown] = useState<number | null>(null);
   const [flash, setFlash] = useState(false);
-  /**
-   * The stream's own aspect, read once the browser knows it.
-   *
-   * The preview box is 9:16-ish and a phone's camera is not, so filling the
-   * box cropped a landscape frame down to its middle third — the guest saw a
-   * close-up of their own face and could not fit themselves in. Sizing the
-   * video's box to the stream instead shows the entire frame, which is also
-   * exactly what is captured. Starts at 3:4 so the box does not jump on a
-   * device that never reports.
-   */
-  const [aspect, setAspect] = useState(3 / 4);
   const timers = useRef<number[]>([]);
 
   useEffect(
@@ -87,16 +76,23 @@ export function CaptureStep({
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {/*
-        The area reserved for the picture carries no frame of its own: the
-        border belongs to the picture, which is sized to the camera's own
-        aspect. Drawing the frame out here instead left a bordered box with
-        the stream letterboxed inside it, which reads as a broken layout
-        rather than as a photo.
+        A circle to stand in, and an oval to put your face in.
+
+        The circle is a GUIDE, not the photograph. `captureFrame` still keeps
+        the whole camera frame — see lib/booth/capture — because the model is
+        asked for a full-length portrait and the less of the body it can see
+        the more it has to invent. So the guest is shown a tighter view than
+        is actually taken, on purpose; do not "fix" the mismatch by cropping
+        the capture to match.
+
+        Square corners are the house rule and this is the one deliberate
+        exception: a circle is what reads as "put your face here" without any
+        instructions, and the caption underneath does the rest.
       */}
       <div
         style={{
           flex: 1,
-          // Without this the photo refuses to shrink below its content and
+          // Without this the circle refuses to shrink below its content and
           // pushes the footer off a short stage — an operator's laptop, or a
           // kiosk in a browser with chrome.
           minHeight: 0,
@@ -104,39 +100,32 @@ export function CaptureStep({
           containerType: "size",
           display: "grid",
           placeItems: "center",
+          gap: "var(--space-5)",
+          alignContent: "center",
         }}
       >
         <div
           style={{
             position: "relative",
-            /*
-             * Fitted to the stream, so `cover` below crops nothing away.
-             *
-             * The same `min()` pair `BoothFrame` uses, and not `aspect-ratio`,
-             * which cannot cap one axis against the other: with a definite
-             * width, a max-height clamp resolves both axes and the ratio is
-             * dropped. That was harmless only while every stream was landscape
-             * in a tall area — a phone reporting a portrait stream would have
-             * stretched the frame and cropped the guest.
-             */
-            width: `min(100cqw, calc(100cqh * ${aspect}))`,
-            height: `min(100cqh, calc(100cqw * ${1 / aspect}))`,
+            // Square, so the circle is a circle: the smaller axis wins, the
+            // same `min()` pair `BoothFrame` uses. `aspect-ratio` cannot cap
+            // one axis against the other — once a clamp resolves the second
+            // axis the ratio is dropped and the shape distorts.
+            width: "min(100cqw, 100cqh)",
+            height: "min(100cqw, 100cqh)",
+            borderRadius: "50%",
             overflow: "hidden",
-            // Paper, not the house ink rule: these three screens sit on the ink
-            // stage, where a black edge round a dark photo is no edge at all.
+            // Paper, not the house ink rule: the ring has to read against the
+            // purple ground and against whatever the camera is showing.
             border: "var(--border-heavy) solid var(--sb-paper)",
-            background: "var(--sb-ink-2)",
+            background: "var(--sb-purple-deep)",
           }}
         >
-          <video
+        <video
             ref={videoRef}
             playsInline
             muted
             autoPlay
-            onLoadedMetadata={(event) => {
-              const { videoWidth, videoHeight } = event.currentTarget;
-              if (videoWidth && videoHeight) setAspect(videoWidth / videoHeight);
-            }}
             style={{
               position: "absolute",
               inset: 0,
@@ -148,6 +137,36 @@ export function CaptureStep({
           />
 
           <FramingGuide />
+
+          {countdown !== null ? <CountdownDigit value={countdown} /> : null}
+
+          {flash ? (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                pointerEvents: "none",
+                background: "var(--sb-paper)",
+                animation: "sb-flash 500ms ease-out forwards",
+              }}
+            />
+          ) : null}
+        </div>
+
+        {/* The instruction the circle is asking for, in the house face. */}
+        <p
+          style={{
+            margin: 0,
+            font: "var(--type-button)",
+            fontSize: "max(1.125rem, 3.4cqi)",
+            letterSpacing: "var(--tracking-button)",
+            textAlign: "center",
+            color: "var(--text-invert)",
+          }}
+        >
+          {countdown !== null ? "Hold still\u2026" : "Position your face"}
+        </p>
+
 
         {state !== "ready" ? (
           <div
@@ -223,20 +242,6 @@ export function CaptureStep({
           </div>
         ) : null}
 
-        {countdown !== null ? <CountdownDigit value={countdown} /> : null}
-
-        {flash ? (
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              pointerEvents: "none",
-              background: "var(--sb-paper)",
-              animation: "sb-flash 500ms ease-out forwards",
-            }}
-          />
-        ) : null}
-        </div>
       </div>
 
       <StepFooter
@@ -257,71 +262,46 @@ export function CaptureStep({
 }
 
 /**
- * Where to stand.
+ * The oval inside the circle.
  *
- * Still the vertical oval, but sized for the shot the booth now produces: a
- * head that fills half the frame is a head-and-shoulders photo, and the model
- * is being asked for a full-length portrait. Marking the head near the top and
- * the ground near the bottom tells a guest to step back, which is the only
- * thing that actually puts their outfit and their shoes in the picture — and
- * the less of the body the camera sees, the more of it the model invents.
+ * The circle says "this is the camera"; the oval says "your face goes here".
+ * Splitting the two is what lets a guest self-correct without reading
+ * anything — they can see immediately whether their face is too small, too
+ * high, or off to one side.
  *
- * Drawn as a hard dashed gold rule over a vignette rather than a translucent
- * overlay, because on a bright venue screen a soft guide is invisible from
- * where the guest is really standing.
- *
- * The viewBox is portrait and fitted with `meet`, so the marks keep their
- * proportions on any camera: on a wide landscape stream they sit in a narrow
- * column in the middle, which is exactly where a standing person belongs.
+ * A square viewBox because the circle is square, so the oval keeps its shape
+ * whatever size the stage gives it. Dashed and gold rather than a translucent
+ * overlay: on a bright venue screen a soft guide is invisible from where the
+ * guest is really standing.
  */
 function FramingGuide() {
   return (
     <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+      {/* Darkens the ring outside the oval, so the eye is pulled to the
+          middle without anything being hidden. */}
       <div
         style={{
           position: "absolute",
           inset: 0,
           background:
-            "radial-gradient(78% 70% at 50% 50%, transparent 62%, rgba(13,7,21,0.7) 100%)",
+            "radial-gradient(46% 60% at 50% 48%, transparent 68%, rgba(13,7,21,0.5) 100%)",
         }}
       />
       <svg
-        viewBox="0 0 60 100"
+        viewBox="0 0 100 100"
         preserveAspectRatio="xMidYMid meet"
         style={{ position: "absolute", inset: 0, height: "100%", width: "100%" }}
       >
-        {/* The head, at the height a standing figure's head sits. */}
         <ellipse
-          cx="30"
-          cy="14"
-          rx="6.4"
-          ry="9"
+          cx="50"
+          cy="48"
+          rx="26"
+          ry="35"
           fill="none"
-          stroke="var(--sb-gold)"
-          strokeWidth="0.8"
-          strokeDasharray="2.6 2"
-          opacity="0.85"
-        />
-        {/* The ground. A guest who gets their head in the oval and their feet
-            on this line is standing far enough back to be photographed whole. */}
-        <path
-          d="M14 95 H46"
-          fill="none"
-          stroke="var(--sb-gold)"
-          strokeWidth="0.8"
-          strokeDasharray="2.6 2"
+          stroke="var(--sb-paper)"
+          strokeWidth="2.4"
+          strokeDasharray="5 4.5"
           strokeLinecap="round"
-          opacity="0.85"
-        />
-        {/* Corner ticks marking the standing column, so the two marks read as
-            one frame rather than as two unrelated shapes. */}
-        <path
-          d="M14 88 V95 H21 M46 88 V95 H39"
-          fill="none"
-          stroke="var(--sb-gold)"
-          strokeWidth="0.8"
-          strokeLinecap="round"
-          opacity="0.45"
         />
       </svg>
     </div>

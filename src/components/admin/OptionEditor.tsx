@@ -39,6 +39,7 @@ export function OptionEditor({
   idPrefix,
   allowGenerate = false,
   defaultReference = true,
+  configLabel = "How the guest chooses",
 }: {
   title: string;
   description: string;
@@ -50,6 +51,12 @@ export function OptionEditor({
   allowGenerate?: boolean;
   /** Whether a new option's image, once uploaded, is sent to the model. */
   defaultReference?: boolean;
+  /**
+   * Names the fixed-vs-select control. More than one list can share a tab, and
+   * two identically labelled controls on one page is ambiguous to anyone
+   * navigating by label rather than by eye.
+   */
+  configLabel?: string;
 }) {
   const [expanded, setExpanded] = useState<string | null>(options[0]?.id ?? null);
 
@@ -116,7 +123,7 @@ export function OptionEditor({
       {config && onConfigChange ? (
       <Card style={{ padding: "var(--space-4)" }}>
         <Field
-          label="How the guest chooses"
+          label={configLabel}
           hint={
             config.mode === "fixed"
               ? "The booth skips this step entirely and always uses your choice."
@@ -125,7 +132,7 @@ export function OptionEditor({
         >
           <div style={{ display: "flex", gap: "var(--space-2)" }}>
             <Select
-              aria-label="How the guest chooses"
+              aria-label={configLabel}
               value={config.mode}
               onChange={(event) =>
                 onConfigChange({ ...config, mode: event.target.value as StepConfig["mode"] })

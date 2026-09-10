@@ -1,5 +1,5 @@
 import { badRequest, handle, notFound, ok, readJson } from "@/lib/api";
-import { resolveAllCustomisations, resolveTheme } from "@/lib/booth/steps";
+import { resolveAllCustomisations, resolveMood, resolveTheme } from "@/lib/booth/steps";
 import { getActivePresetOrDefault, getDb, sanitisePreset } from "@/lib/db";
 import { buildPrompt } from "@/lib/fal/prompt";
 import { getProvider } from "@/lib/fal/provider";
@@ -51,7 +51,38 @@ export async function POST(request: Request) {
       throw badRequest("That look is no longer available. Please start over.");
     }
 
-    const customisations = resolveAllCustomisations(theme, body.customisations);
+    const mood = resolveMood(publicPreset, body.moodId);
+    if (body.moodId && !mood) {
+      throw badRequest("That mood is no longer available. Please start over.");
+    }
+
+    /*
+     * Mood rides the customisation channel rather than getting a field of its
+     * own. It is the same shape — a label naming a prompt section, and one
+     * chosen option — so this puts a `MOOD —` section in the prompt after the
+     * theme's own questions, and carries the choice into the session record,
+     * the analytics tally, the CSV export and the sessions table without a
+     * line of code in any of them. The slot is synthetic: mood lives on the
+     * preset, not on a theme, so there is no stored slot to point at.
+     */
+    const customisations = [
+      ...resolveAllCustomisations(theme, body.customisations),
+      ...(mood
+        ? [
+            {
+              slot: {
+                id: "custom-mood",
+                label: "Mood",
+                title: "",
+                subtitle: "",
+                options: [],
+                enabled: true,
+              },
+              option: mood,
+            },
+          ]
+        : []),
+    ];
 
     const { prompt, imageUrls } = buildPrompt(
       publicPreset,

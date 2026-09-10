@@ -17,6 +17,7 @@ import type { BoothOption, Customisation, PublicPreset, Theme } from "@/lib/sche
 export type StepId =
   | "details"
   | "theme"
+  | "mood"
   | `custom-${number}`
   | "capture"
   | "review"
@@ -33,6 +34,31 @@ export function customisationIndex(step: StepId): number | null {
 
 export function enabledThemes(preset: PublicPreset): Theme[] {
   return preset.themes.filter((theme) => theme.enabled);
+}
+
+export function enabledMoods(preset: PublicPreset): BoothOption[] {
+  return preset.moods.filter((mood) => mood.enabled);
+}
+
+/**
+ * The mood a session ends up with — the guest's choice, the operator's pinned
+ * mood, or the only one on offer. Deliberately the same shape as
+ * `resolveTheme`: the two are the same kind of decision, and a reader who has
+ * understood one should not have to re-read the other.
+ */
+export function resolveMood(preset: PublicPreset, selectedId: string | null): BoothOption | null {
+  const moods = enabledMoods(preset);
+  if (moods.length === 0) return null;
+
+  const config = preset.flow.mood;
+  if (config.mode === "fixed") {
+    return moods.find((mood) => mood.id === config.fixedId) ?? moods[0];
+  }
+  if (selectedId) {
+    const chosen = moods.find((mood) => mood.id === selectedId);
+    if (chosen) return chosen;
+  }
+  return moods.length === 1 ? moods[0] : null;
 }
 
 /**
@@ -108,6 +134,12 @@ export function isThemeStepVisible(preset: PublicPreset): boolean {
   return enabledThemes(preset).length > 1;
 }
 
+/** As above: pinned, or fewer than two moods, and there is nothing to ask. */
+export function isMoodStepVisible(preset: PublicPreset): boolean {
+  if (preset.flow.mood.mode === "fixed") return false;
+  return enabledMoods(preset).length > 1;
+}
+
 /**
  * The ordered steps a guest walks through, given the theme they have chosen.
  * Before a theme is picked the customisation steps are not yet known — which
@@ -116,6 +148,9 @@ export function isThemeStepVisible(preset: PublicPreset): boolean {
 export function stepSequence(preset: PublicPreset, themeId: string | null = null): StepId[] {
   const steps: StepId[] = ["details"];
   if (isThemeStepVisible(preset)) steps.push("theme");
+  // Before the theme's own questions: mood is asked once and means the same
+  // thing whichever theme was picked, so it reads as part of the same breath.
+  if (isMoodStepVisible(preset)) steps.push("mood");
 
   const theme = resolveTheme(preset, themeId);
   askedCustomisations(theme).forEach((_, index) => steps.push(`custom-${index}`));

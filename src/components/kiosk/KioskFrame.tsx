@@ -20,7 +20,7 @@ import { BoothFrame, type StageGround } from "@/components/ds/booth";
 export function KioskFrame({
   accent,
   accentSoft,
-  ground = "stage",
+  ground = "purple",
   children,
 }: {
   accent: string;

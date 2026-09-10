@@ -49,7 +49,7 @@ export default async function ResultPage({
           gap: "var(--space-5)",
           padding: "var(--space-6)",
           textAlign: "center",
-          background: "var(--surface-stage)",
+          background: "var(--surface-invert)",
           color: "var(--text-invert)",
         }}
       >
@@ -96,7 +96,7 @@ export default async function ResultPage({
         maxWidth: 520,
         margin: "0 auto",
         padding: "var(--space-6) var(--space-5) var(--space-8)",
-        background: "var(--surface-stage)",
+        background: "var(--surface-invert)",
         color: "var(--text-invert)",
       }}
     >
@@ -153,7 +153,7 @@ export default async function ResultPage({
             aspectRatio: "9 / 16",
             overflow: "hidden",
             border: "var(--border-hard) solid var(--line-hard)",
-            background: "var(--sb-ink-2)",
+            background: "var(--sb-purple-deep)",
           }}
         >
           <Image

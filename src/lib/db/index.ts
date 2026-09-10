@@ -60,6 +60,7 @@ export function sanitisePreset(preset: Preset): PublicPreset {
     flow: parsed.flow,
     generation: parsed.generation,
     form: { ...parsed.form, fields: parsed.form.fields.filter((field) => field.enabled) },
+    moods: parsed.moods.filter((option) => option.enabled),
     // Disabled themes, slots and options are filtered here rather than in the
     // kiosk so a guest with devtools cannot see what the operator turned off.
     themes: parsed.themes

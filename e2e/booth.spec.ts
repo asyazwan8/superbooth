@@ -52,6 +52,11 @@ async function expectFramedWhole(page: Page, alt: string) {
 async function walkTheme(page: Page, theme: string, expectedQuestions: number) {
   await page.getByRole("button", { name: theme, exact: true }).click();
 
+  // Mood is asked once, straight after the theme and before its own
+  // questions, so it is part of every walk rather than a per-theme count.
+  await expect(page.getByRole("heading", { name: /how are you feeling/i })).toBeVisible();
+  await page.getByRole("button", { name: "Happy", exact: true }).click();
+
   for (let answered = 0; answered < expectedQuestions; answered += 1) {
     // Each question is its own screen with its own heading; answering one
     // advances to the next. Cards are addressed by their position within the
@@ -157,14 +162,30 @@ test("back returns through the choice steps without losing the selection", async
   await fillDetails(page);
 
   await page.getByRole("button", { name: "Cyberpunk", exact: true }).click();
-  // The first question the Cyberpunk theme asks.
-  await expect(page.getByRole("heading", { name: /pick your outfit/i })).toBeVisible();
+  // Mood is asked first, before the theme's own questions.
+  await expect(page.getByRole("heading", { name: /how are you feeling/i })).toBeVisible();
 
   await page.getByRole("button", { name: "Go back" }).click();
   await expect(page.getByRole("heading", { name: /choose your theme/i })).toBeVisible();
 
   // The earlier choice is still selected, so Back is non-destructive.
   await expect(page.getByRole("button", { name: "Cyberpunk", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  /*
+   * And a mood survives a change of theme, where a customisation would not.
+   * Mood belongs to the guest; the theme's questions belong to the theme.
+   */
+  await page.getByRole("button", { name: "Cyberpunk", exact: true }).click();
+  await page.getByRole("button", { name: "Serious", exact: true }).click();
+  await expect(page.getByRole("heading", { name: /pick your outfit/i })).toBeVisible();
+
+  await page.getByRole("button", { name: "Go back" }).click();
+  await page.getByRole("button", { name: "Go back" }).click();
+  await page.getByRole("button", { name: "Jungle Ranger", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Serious", exact: true })).toHaveAttribute(
     "aria-pressed",
     "true",
   );

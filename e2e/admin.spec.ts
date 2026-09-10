@@ -156,6 +156,10 @@ test("the sessions table lists guests and exports them as CSV", async ({ page })
    * the record. This is that assertion.
    */
   expect(text).toContain('"theme"');
+  // Mood rides the customisation channel, so it earns its own CSV column
+  // without analytics.ts knowing anything about it.
+  expect(text).toContain('"Mood"');
+  expect(text).toMatch(/"(Happy|Serious)"/);
   const themed = text.split("\n").some((row) => /"(80s|Cyberpunk|Jungle Ranger|Superhero Comicbook)"/.test(row));
   expect(themed, "no session recorded the theme the guest chose").toBe(true);
 });
