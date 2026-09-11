@@ -24,7 +24,7 @@ export default async function LoginPage() {
         backgroundSize: "var(--texture-halftone-size)",
       }}
     >
-      <SuperLogo height="240px" subline="Backend" />
+      <SuperLogo height="240px" subline="Admin Access" />
       <LoginForm mode={firebaseConfigured() ? "firebase" : "pin"} />
     </main>
   );
