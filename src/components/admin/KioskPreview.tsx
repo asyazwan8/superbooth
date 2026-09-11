@@ -127,17 +127,6 @@ export function KioskPreview({ preset }: { preset: PublicPreset }) {
           </span>
 
           <span
-            aria-hidden="true"
-            style={{
-              width: "12cqi",
-              height: "12cqi",
-              background: "var(--sb-green)",
-              border: "var(--border-hard) solid var(--line-hard)",
-              borderRadius: "var(--radius-pill)",
-            }}
-          />
-
-          <span
             style={{
               font: "var(--type-label)",
               fontSize: "2.6cqi",
