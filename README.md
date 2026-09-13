@@ -24,18 +24,30 @@ minutes with no accounts.
 ### The guest flow
 
 ```
-idle → details & consent → scene → look → style → capture → review
-     → generating → pick a variant → QR & download
+idle → details & consent → theme → mood → the theme's customisations
+     → capture → review → generating → pick a variant → QR & download
 ```
 
-Scene, look and style each disappear from the flow when the operator pins them
-to a fixed choice — or when only one option is enabled. Everything else is
-configured per event in the backend: logo, accent colour, which fields to collect,
-consent wording, variant count, resolution, retries, idle timeout and retention.
+The theme decides what comes after it: each one carries up to four
+customisations of its own (outfit, accessory, backdrop, and a superpower for
+the superhero), so the superhero journey asks one more question than the rest.
+Any step disappears when the operator pins it to a fixed choice — or when only
+one option is enabled. Everything else is configured per event in the backend:
+logo, accent colour, which fields to collect, consent wording, variant count,
+resolution, retries, idle timeout and retention.
 
 ---
 
 ## Architecture notes
+
+**The music bed outlives the page it started on.** `public/booth-theme.mp3`
+is played by a singleton outside React's tree (`lib/booth/music`), because the
+journey spans two routes and an element owned by either would restart the track
+on every navigation and every reset. Browsers refuse audio without a gesture,
+so it starts on the taps that already exist — "tap anywhere" and Continue —
+which means the booth is silent only until the first guest after a page load.
+It ducks through the capture screen so the countdown and shutter land, and the
+attendant menu mutes it per device, persisted, without touching the preset.
 
 **The guest flow is one route, not nine.** `/booth` holds the whole journey in
 client state. Page navigations on a kiosk mean a flash of empty background

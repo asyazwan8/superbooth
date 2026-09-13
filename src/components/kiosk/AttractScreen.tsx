@@ -6,6 +6,7 @@ import { AttendantMenu } from "@/components/kiosk/AttendantMenu";
 import { KioskFrame } from "@/components/kiosk/KioskFrame";
 import { SuperLogo } from "@/components/ds/booth";
 import { Badge } from "@/components/ds/core";
+import { useBoothMusic } from "@/hooks/useBoothMusic";
 import { useKioskMode } from "@/hooks/useKioskMode";
 import type { PublicPreset } from "@/lib/schema";
 
@@ -21,14 +22,20 @@ import type { PublicPreset } from "@/lib/schema";
 export function AttractScreen({ preset, mock }: { preset: PublicPreset; mock: boolean }) {
   const router = useRouter();
   const { engage } = useKioskMode();
+  const { unlock } = useBoothMusic();
   const [starting, setStarting] = useState(false);
 
   const start = useCallback(() => {
     if (starting) return;
     setStarting(true);
     void engage();
+    // The same gesture that buys fullscreen buys audio: browsers refuse both
+    // without one. Until someone taps, the booth is silent — unavoidable, and
+    // only ever true of the first guest after a page load, since the track
+    // then plays on through every reset back to this screen.
+    unlock();
     router.push("/booth");
-  }, [engage, router, starting]);
+  }, [engage, router, starting, unlock]);
 
   return (
     <KioskFrame
