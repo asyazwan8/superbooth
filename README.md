@@ -17,6 +17,7 @@ minutes with no accounts.
 | Surface | Route | For |
 |---|---|---|
 | Kiosk | `/` → `/booth` | The guest. Vertical 9:16, touch-first. |
+| iPad booth | `/ipad-air` → `/ipad-air/booth` | The same guest flow, fitted to an iPad Air in portrait. |
 | Result page | `/p/<id>` | What the QR opens on the guest's phone. |
 | Gallery wall | `/gallery` | A second screen beside the booth. |
 | Backend | `/admin` | The operator. |
@@ -53,6 +54,13 @@ attendant menu mutes it per device, persisted, without touching the preset.
 client state. Page navigations on a kiosk mean a flash of empty background
 between every tap and browser history that Back can walk out of; state keeps
 transitions instant and makes "start over" a single reliable reset.
+
+**One booth, fitted per screen.** Each kiosk route names a profile
+(`lib/booth/profiles`): where it lives, and the band of stage shapes it may
+take before it letterboxes. `/` is exactly 9:16; `/ipad-air` stretches to 4:5
+so an iPad fills its glass instead of wearing bars, and insets the stage from
+the status bar and home indicator. The flow reads the profile rather than
+branching on the device, so every reset returns to the route it started on.
 
 **Generation is submit-then-poll.** `/api/booth/generate` enqueues and returns
 in under a second; the kiosk polls for progress. That survives a mid-generation
@@ -109,6 +117,7 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE=/path/to/chromium npm run e2e
 src/
   app/
     (kiosk)/            guest kiosk — attract screen and the booth flow
+      ipad-air/         the same kiosk, fitted to an iPad Air in portrait
     admin/              operator backend (login sits outside the auth guard)
     p/[shortId]/        public result page, the QR target
     gallery/            second-screen photo wall

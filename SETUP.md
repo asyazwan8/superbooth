@@ -183,6 +183,23 @@ of a PIN, and the "Local storage" badge disappears.
 Open your URL on the booth device in fullscreen. On iPad, use **Guided Access**
 (Settings → Accessibility → Guided Access) to lock the browser to the page.
 
+#### On an iPad Air
+
+`/` is composed for a 9:16 screen and shows black bars down both sides of an
+iPad. Use **`/ipad-air`** instead: the same booth, fitted edge to edge to an
+iPad Air in portrait.
+
+1. In Safari, open `https://your-domain.com/ipad-air`.
+2. **Share → Add to Home Screen**, then launch it from the icon. That runs it
+   without Safari's address bar — iPadOS has no fullscreen for a web page —
+   and every reset keeps it on `/ipad-air`.
+3. Mount the iPad in **portrait** and turn on Portrait Orientation Lock in
+   Control Centre. The front camera is on the top edge that way up. Turned to
+   landscape, the booth stays portrait with bars at the sides.
+4. Settings → Display & Brightness → **Auto-Lock: Never**.
+5. Start **Guided Access** from the Home Screen app, so a guest cannot swipe
+   out of it.
+
 **HTTPS is required** for the camera to work. Vercel gives you that; a plain
 `http://` address on a local network will not get camera access in any modern
 browser.

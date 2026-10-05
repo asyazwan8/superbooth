@@ -63,20 +63,42 @@ const STAGE_GROUNDS: Record<StageGround, CSSProperties> = {
   purple: { background: "var(--surface-invert)", color: "var(--text-invert)" },
 };
 
+/** The band of stage shapes (width / height) a stage may take. */
+export interface StageAspect {
+  min: number;
+  max: number;
+}
+
+const NINE_SIXTEEN: StageAspect = { min: 9 / 16, max: 9 / 16 };
+
 /**
- * The 9:16 stage every kiosk screen renders inside.
+ * The stage every kiosk screen renders inside — 9:16 unless told otherwise.
  *
  * The booth is a 55" vertical screen, but the same build has to look right on
  * an operator's laptop during setup, so the stage is fitted and letterboxed
  * rather than stretched. It is also a container-query context: display type
  * scales against the stage, and a letterboxed stage is not the viewport.
+ *
+ * `aspect` widens the one shape into a band, for a screen that is not 9:16
+ * and should not wear bars to pretend it is — an iPad is about 0.72. Inside
+ * the band the stage fills the screen; past either edge it stops there and
+ * letterboxes. A band of one shape is exactly the old fixed 9:16.
+ *
+ * `safeArea` insets the stage from the status bar and home indicator, which a
+ * Home Screen web app draws over the page.
  */
 export function BoothFrame({
   ground = "purple",
+  aspect = NINE_SIXTEEN,
+  safeArea = false,
   children,
   style,
   ...rest
-}: React.HTMLAttributes<HTMLDivElement> & { ground?: StageGround }) {
+}: React.HTMLAttributes<HTMLDivElement> & {
+  ground?: StageGround;
+  aspect?: StageAspect;
+  safeArea?: boolean;
+}) {
   return (
     // The outer is a SIZE container, which is what lets the stage below size
     // itself from both of its own axes in one formula. Neither percentages nor
@@ -90,17 +112,27 @@ export function BoothFrame({
         display: "grid",
         placeItems: "center",
         background: "#000",
+        // Container units measure the content box, so padding the outer by
+        // the insets is all it takes to fit the stage inside them.
+        padding: safeArea
+          ? "env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)"
+          : undefined,
       }}
       {...rest}
     >
       <div
+        data-booth-stage=""
         style={{
           position: "relative",
-          containerType: "inline-size",
+          // A SIZE container, not just inline: the stage is explicitly sized
+          // so this changes no layout, and it lets a screen cap something
+          // tall against the stage's height (`cqh`) as well as its width.
+          containerType: "size",
           // Fitted, never stretched, in either direction: whichever axis binds
-          // wins and the other is derived from it.
-          width: "min(100cqw, calc(100cqh * 9 / 16))",
-          height: "min(100cqh, calc(100cqw * 16 / 9))",
+          // wins and the other is derived from it — at the widest shape the
+          // band allows for width, the narrowest for height.
+          width: `min(100cqw, calc(100cqh * ${aspect.max}))`,
+          height: `min(100cqh, calc(100cqw / ${aspect.min}))`,
           overflow: "hidden",
           ...BOOTH_SCALE,
           ...STAGE_GROUNDS[ground],

@@ -2,15 +2,17 @@
 
 import { useEffect } from "react";
 import { BoothFrame, type StageGround } from "@/components/ds/booth";
+import { useKioskProfile } from "@/components/kiosk/KioskProfile";
 
 /**
- * The 9:16 stage every kiosk screen renders inside.
+ * The stage every kiosk screen renders inside.
  *
  * `BoothFrame` does the letterboxing and the container-query context; this
- * wrapper adds the two things that are the app's business rather than the
+ * wrapper adds the things that are the app's business rather than the
  * design system's — marking the body as a kiosk (which is what disables
  * text selection, callouts and overscroll in `tokens/base.css`) and exposing
- * the preset's accent to anything that wants it.
+ * the preset's accent to anything that wants it — and fitting the stage to
+ * the screen the route says it is serving (see lib/booth/profiles).
  *
  * The accent deliberately does not repaint the booth chrome. The design
  * system's pairings are contrast-checked; an operator picking a pale accent
@@ -28,6 +30,8 @@ export function KioskFrame({
   ground?: StageGround;
   children: React.ReactNode;
 }) {
+  const { aspect, safeArea } = useKioskProfile();
+
   useEffect(() => {
     document.body.dataset.kiosk = "true";
     return () => {
@@ -38,6 +42,8 @@ export function KioskFrame({
   return (
     <BoothFrame
       ground={ground}
+      aspect={aspect}
+      safeArea={safeArea}
       style={
         { "--sb-accent": accent, "--sb-accent-soft": accentSoft } as React.CSSProperties
       }

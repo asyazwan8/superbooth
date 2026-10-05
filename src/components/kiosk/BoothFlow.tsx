@@ -6,6 +6,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { AttendantMenu } from "@/components/kiosk/AttendantMenu";
 import { IdleOverlay } from "@/components/kiosk/IdleOverlay";
 import { KioskFrame } from "@/components/kiosk/KioskFrame";
+import { useKioskProfile } from "@/components/kiosk/KioskProfile";
 import type { StageGround } from "@/components/ds/booth";
 import { Badge } from "@/components/ds/core";
 import { CaptureStep } from "@/components/kiosk/steps/CaptureStep";
@@ -166,6 +167,7 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
   const router = useRouter();
   const { engage } = useKioskMode();
   const { unlock } = useBoothMusic();
+  const { home } = useKioskProfile();
 
   const [step, setStepId] = useState<StepId>("details");
   // Which way the journey just moved, so a transition can carry the same
@@ -210,9 +212,11 @@ export function BoothFlow({ preset, mock }: { preset: PublicPreset; mock: boolea
     setError(null);
     setQueuePosition(null);
     setElapsedMs(0);
-    // Pull any preset changes an operator made while this session ran.
-    router.replace("/");
-  }, [router, setStep]);
+    // Pull any preset changes an operator made while this session ran. Back
+    // to this screen's own attract page: an iPad sent to `/` would come back
+    // as a 9:16 kiosk wearing bars.
+    router.replace(home);
+  }, [home, router, setStep]);
 
   // The idle watchdog is suspended while a generation is in flight — a guest
   // watching a progress bar is not idle, and resetting would abandon a request

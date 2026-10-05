@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { AttendantMenu } from "@/components/kiosk/AttendantMenu";
 import { KioskFrame } from "@/components/kiosk/KioskFrame";
+import { useKioskProfile } from "@/components/kiosk/KioskProfile";
 import { SuperLogo } from "@/components/ds/booth";
 import { Badge } from "@/components/ds/core";
 import { useBoothMusic } from "@/hooks/useBoothMusic";
@@ -23,6 +24,7 @@ export function AttractScreen({ preset, mock }: { preset: PublicPreset; mock: bo
   const router = useRouter();
   const { engage } = useKioskMode();
   const { unlock } = useBoothMusic();
+  const profile = useKioskProfile();
   const [starting, setStarting] = useState(false);
 
   const start = useCallback(() => {
@@ -34,8 +36,8 @@ export function AttractScreen({ preset, mock }: { preset: PublicPreset; mock: bo
     // only ever true of the first guest after a page load, since the track
     // then plays on through every reset back to this screen.
     unlock();
-    router.push("/booth");
-  }, [engage, router, starting, unlock]);
+    router.push(profile.booth);
+  }, [engage, profile.booth, router, starting, unlock]);
 
   return (
     <KioskFrame
@@ -69,7 +71,10 @@ export function AttractScreen({ preset, mock }: { preset: PublicPreset; mock: bo
       >
         <SuperLogo
           src={preset.branding.logoUrl || undefined}
-          height="70cqi"
+          // Capped against the stage's height for a stage squarer than 9:16
+          // (an iPad), where 70cqi of lockup pushes the subline off the
+          // bottom. On a 9:16 stage 70cqi is 39cqh, so the cap never binds.
+          height="min(70cqi, 44cqh)"
           style={{ position: "relative", maxWidth: "100%" }}
         />
 

@@ -42,6 +42,12 @@ export default defineConfig({
       testMatch: /booth\.spec\.ts/,
     },
     {
+      name: "ipad-air",
+      // An iPad Air (M1) in portrait, at the size it reports to a page.
+      use: { ...devices["Desktop Chrome"], viewport: { width: 820, height: 1180 }, hasTouch: true },
+      testMatch: /ipad\.spec\.ts/,
+    },
+    {
       name: "admin",
       use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 900 } },
       testMatch: /admin\.spec\.ts/,

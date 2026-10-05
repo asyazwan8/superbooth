@@ -1,0 +1,11 @@
+{
+  "name": "Superbooth",
+  "short_name": "Superbooth",
+  "start_url": "/ipad-air",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0715",
+  "theme_color": "#0d0715",
+  "icons": [{ "src": "/ipad-air-icon.png", "sizes": "180x180", "type": "image/png" }]
+}
